@@ -12,11 +12,10 @@ const withPWA = withPWAInit({
     runtimeCaching: [
       {
         urlPattern: /^\/api\/(fish|products|categories|customers)/,
-        handler: "NetworkFirst",
+        handler: "StaleWhileRevalidate",
         options: {
           cacheName: "api-cache",
           expiration: { maxAgeSeconds: 60 * 60 * 24 },
-          networkTimeoutSeconds: 5,
         },
       },
     ],
