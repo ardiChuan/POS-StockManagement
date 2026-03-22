@@ -13,15 +13,18 @@ import { useCart } from "@/hooks/useCart";
 import { enqueueSale, flushQueue } from "@/lib/offline-queue";
 import type { Fish, Product, ProductVariant, Customer, CartItem, DiscountType } from "@/types";
 
+type ProductWithVariants = Product & { variants: ProductVariant[] };
+const _cache: { fish: Fish[] | null; products: ProductWithVariants[] | null } = { fish: null, products: null };
+
 export default function PosPage() {
   const router = useRouter();
   const cart = useCart();
 
   const [tab, setTab] = useState<"fish" | "products">("fish");
   const [search, setSearch] = useState("");
-  const [fish, setFish] = useState<Fish[]>([]);
-  const [products, setProducts] = useState<(Product & { variants: ProductVariant[] })[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [fish, setFish] = useState<Fish[]>(_cache.fish ?? []);
+  const [products, setProducts] = useState<ProductWithVariants[]>(_cache.products ?? []);
+  const [loading, setLoading] = useState(_cache.fish === null);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
 
@@ -35,21 +38,30 @@ export default function PosPage() {
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (background = false) => {
+    if (!background) setLoading(true);
     try {
       const [fishRes, prodRes] = await Promise.all([
         fetch("/api/fish?status=available"),
         fetch("/api/products"),
       ]);
-      setFish(await fishRes.json());
-      setProducts(await prodRes.json());
+      const [fishData, prodData] = await Promise.all([fishRes.json(), prodRes.json()]);
+      _cache.fish = fishData;
+      _cache.products = prodData;
+      setFish(fishData);
+      setProducts(prodData);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    if (_cache.fish) {
+      loadData(true); // already showing cached data, refresh in background
+    } else {
+      loadData();
+    }
+  }, [loadData]);
 
   // Flush offline queue when reconnecting
   useEffect(() => {
