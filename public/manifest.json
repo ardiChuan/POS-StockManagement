@@ -1,6 +1,6 @@
 {
-  "name": "Arowana POS",
-  "short_name": "Arowana POS",
+  "name": "Aponk Red",
+  "short_name": "Aponk Red",
   "description": "Point of sale and inventory for Arowana fish store",
   "start_url": "/pos",
   "display": "standalone",
