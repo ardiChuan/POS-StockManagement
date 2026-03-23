@@ -123,15 +123,13 @@
   }
   body {
     @apply bg-background text-foreground;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
   html {
     @apply font-sans;
   }
-  a, button {
-    -webkit-touch-callout: none;
-    user-select: none;
-  }
-  input, textarea {
+  input, textarea, [contenteditable] {
     user-select: text;
     -webkit-user-select: text;
   }
