@@ -58,7 +58,7 @@ export function deviceCookieOptions() {
     name: COOKIE_NAME,
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict' as const,
+    sameSite: 'lax' as const,
     maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
     path: '/',
   };
