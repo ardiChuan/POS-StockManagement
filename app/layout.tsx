@@ -6,13 +6,13 @@ import "./globals.css";
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 
 export const metadata: Metadata = {
-  title: "Arowana POS",
+  title: "Aponk Red",
   description: "Point of sale for Arowana fish store",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Arowana POS",
+    title: "Aponk Red",
   },
 };
 
