@@ -127,4 +127,12 @@
   html {
     @apply font-sans;
   }
+  a, button {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+  input, textarea {
+    user-select: text;
+    -webkit-user-select: text;
+  }
 }
