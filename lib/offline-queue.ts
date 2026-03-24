@@ -1,4 +1,5 @@
 import { openDB, type IDBPDatabase } from "idb";
+import { apiFetch } from "./api";
 import type { CreateSaleRequest } from "@/types";
 
 const DB_NAME = "pos-offline";
@@ -51,9 +52,8 @@ export async function flushQueue(
   const pending = await getPendingSales();
   for (const entry of pending) {
     try {
-      const res = await fetch("/api/sales", {
+      const res = await apiFetch("/api/sales", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(entry.payload),
       });
       if (res.ok) {
