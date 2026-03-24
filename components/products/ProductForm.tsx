@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 import type { Product, ProductVariant, Category } from "@/types";
 
 interface ProductFormProps {
@@ -34,7 +35,7 @@ export function ProductForm({ product }: ProductFormProps) {
   const hasVariants = variants.length > 0;
 
   useEffect(() => {
-    fetch("/api/categories").then((r) => r.json()).then(setCategories);
+    apiFetch("/api/categories").then((r) => r.json()).then(setCategories);
   }, []);
 
   const filteredCats = categories.filter((c) =>
@@ -48,7 +49,7 @@ export function ProductForm({ product }: ProductFormProps) {
     } else {
       // Create new category
       if (!categoryInput.trim()) return;
-      const res = await fetch("/api/categories", {
+      const res = await apiFetch("/api/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: categoryInput.trim() }),
@@ -84,9 +85,8 @@ export function ProductForm({ product }: ProductFormProps) {
       // Save product
       const url = isEdit ? `/api/products/${product!.id}` : "/api/products";
       const method = isEdit ? "PUT" : "POST";
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
           category_id: categoryId,
@@ -106,15 +106,13 @@ export function ProductForm({ product }: ProductFormProps) {
       for (const v of variants) {
         const isNew = !existingIds.has(v.id ?? "");
         if (isNew) {
-          await fetch(`/api/products/${productId}/variants`, {
+          await apiFetch(`/api/products/${productId}/variants`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ size_label: v.size_label, price: v.price, stock_qty: v.stock_qty, low_stock_threshold: v.low_stock_threshold }),
           });
         } else {
-          await fetch(`/api/products/${productId}/variants/${v.id}`, {
+          await apiFetch(`/api/products/${productId}/variants/${v.id}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ size_label: v.size_label, price: v.price, stock_qty: v.stock_qty, low_stock_threshold: v.low_stock_threshold }),
           });
         }
@@ -123,7 +121,7 @@ export function ProductForm({ product }: ProductFormProps) {
       // Delete removed variants
       const removedIds = (product?.variants ?? []).filter((v) => !variants.find((nv) => nv.id === v.id)).map((v) => v.id);
       for (const vid of removedIds) {
-        await fetch(`/api/products/${productId}/variants/${vid}`, { method: "DELETE" });
+        await apiFetch(`/api/products/${productId}/variants/${vid}`, { method: "DELETE" });
       }
 
       toast.success(isEdit ? "Product updated" : "Product added");
@@ -136,7 +134,7 @@ export function ProductForm({ product }: ProductFormProps) {
 
   async function handleDelete() {
     if (!product || !confirm("Delete this product?")) return;
-    const res = await fetch(`/api/products/${product.id}`, { method: "DELETE" });
+    const res = await apiFetch(`/api/products/${product.id}`, { method: "DELETE" });
     if (!res.ok) return toast.error("Delete failed");
     toast.success("Product deleted");
     router.push("/products");
