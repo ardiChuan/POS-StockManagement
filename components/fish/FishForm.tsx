@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 import type { Fish } from "@/types";
 
 export function FishForm({ fish }: { fish?: Fish }) {
@@ -51,9 +52,8 @@ export function FishForm({ fish }: { fish?: Fish }) {
     try {
       const url = isEdit ? `/api/fish/${fish!.id}` : "/api/fish";
       const method = isEdit ? "PUT" : "POST";
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fish_display_id: fishDisplayId.trim(),
           tank_id: tankId.trim(),
@@ -75,7 +75,7 @@ export function FishForm({ fish }: { fish?: Fish }) {
 
   async function handleDelete() {
     if (!fish || !confirm("Delete this fish?")) return;
-    const res = await fetch(`/api/fish/${fish.id}`, { method: "DELETE" });
+    const res = await apiFetch(`/api/fish/${fish.id}`, { method: "DELETE" });
     const data = await res.json();
     if (!res.ok) return toast.error(data.error ?? "Delete failed");
     toast.success("Fish deleted");
