@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aponk Red — Arowana Store POS
 
-## Getting Started
+A point-of-sale and stock management system built for an arowana fish store. Runs as a PWA (Progressive Web App) installable on Android and iOS.
 
-First, run the development server:
+## Tech Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**Frontend**
+- Next.js 15 (App Router) — deployed on Vercel
+- Tailwind CSS v4
+- PWA via `@ducanh2912/next-pwa`
+
+**Backend**
+- ASP.NET Core Web API (.NET 10) — deployed on Railway
+- JWT Bearer authentication
+- Supabase (PostgreSQL) via REST API
+
+## Features
+
+- **POS** — sell individual fish or stock products, apply discounts, cash/transfer payment
+- **Fish management** — track individual arowana by ID, tank, size, and photo
+- **Product management** — products with optional size variants and stock levels
+- **Stock adjustment** — manual stock in/out with notes and adjustment history
+- **Expenses** — record daily operational expenses
+- **Cash register (EOD)** — end-of-day cash count with discrepancy tracking
+- **Reports** — sales and expense reports by date range
+- **Inventory report** — stock levels with low stock and out-of-stock indicators
+- **Admin** — manage registered devices and store settings
+- **Offline support** — cash sales queued in IndexedDB when offline, synced on reconnect
+- **Multi-device** — role-based access (owner / admin / cashier) across multiple devices
+
+## Project Structure
+
+```
+/
+├── app/                  # Next.js App Router pages
+│   ├── (auth)/setup/     # Device registration
+│   └── (app)/            # Main app (pos, fish, products, stock, expenses, eod, reports, admin)
+├── components/           # Reusable UI components
+├── lib/
+│   ├── api.ts            # Central fetch client (JWT injection + Railway base URL)
+│   ├── auth.ts           # Server-side auth utilities
+│   └── offline-queue.ts  # IndexedDB offline sale queue
+├── backend/              # ASP.NET Core Web API
+│   ├── Controllers/      # 11 API controllers
+│   ├── Models/           # Domain models
+│   ├── Services/         # SupabaseService, TokenService
+│   └── Middleware/       # DeviceAuthMiddleware
+└── public/               # PWA manifest, icons
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Frontend (Vercel)**
+```
+NEXT_PUBLIC_BACKEND_URL=https://your-railway-app.up.railway.app
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Backend (Railway)**
+```
+Supabase__Url=https://your-project.supabase.co
+Supabase__ServiceRoleKey=your-service-role-key
+Jwt__Secret=your-jwt-secret
+Jwt__Issuer=AponkRed
+Jwt__Audience=AponkRed
+Cors__AllowedOrigins__0=https://your-vercel-app.vercel.app
+```
 
-## Learn More
+## Local Development
 
-To learn more about Next.js, take a look at the following resources:
+**Frontend**
+```bash
+npm install
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Backend**
+```bash
+cd backend
+dotnet run
+```
