@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import type { Product, ProductVariant, StockAdjustment } from "@/types";
 
@@ -20,8 +21,8 @@ export default function StockPage() {
 
   function loadData() {
     Promise.all([
-      fetch("/api/products").then((r) => r.json()),
-      fetch("/api/stock/adjustments").then((r) => r.json()),
+      apiFetch("/api/products").then((r) => r.json()),
+      apiFetch("/api/stock/adjustments").then((r) => r.json()),
     ]).then(([prods, adjs]) => {
       setProducts(prods);
       setAdjustments(adjs ?? []);
@@ -38,7 +39,7 @@ export default function StockPage() {
     if (!selectedProductId || !qtyChange) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/stock/adjust", {
+      const res = await apiFetch("/api/stock/adjust", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

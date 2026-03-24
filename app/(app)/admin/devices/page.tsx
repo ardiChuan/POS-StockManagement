@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { formatDateTime } from "@/lib/utils";
 import type { Device } from "@/types";
@@ -13,8 +14,8 @@ export default function AdminDevicesPage() {
 
   async function loadDevices() {
     const [devRes, meRes] = await Promise.all([
-      fetch("/api/devices"),
-      fetch("/api/auth/me"),
+      apiFetch("/api/devices"),
+      apiFetch("/api/auth/me"),
     ]);
     setDevices(await devRes.json());
     const me = await meRes.json();
@@ -26,7 +27,7 @@ export default function AdminDevicesPage() {
 
   async function deactivate(id: string) {
     if (!confirm("Deactivate this device? They will need to re-register.")) return;
-    const res = await fetch(`/api/devices/${id}`, { method: "DELETE" });
+    const res = await apiFetch(`/api/devices/${id}`, { method: "DELETE" });
     if (!res.ok) return toast.error("Failed to deactivate");
     toast.success("Device deactivated");
     loadDevices();

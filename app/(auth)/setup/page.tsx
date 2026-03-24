@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { apiFetch, saveToken } from "@/lib/api";
 import type { DeviceRole } from "@/types";
 
 export default function SetupPage() {
@@ -19,7 +20,7 @@ export default function SetupPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/setup")
+    apiFetch("/api/setup")
       .then((r) => r.json())
       .then((d) => {
         setIsFirstSetup(!d.setup_complete);
@@ -34,9 +35,8 @@ export default function SetupPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/setup", {
+      const res = await apiFetch("/api/setup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           store_name: isFirstSetup ? storeName.trim() : undefined,
           access_code: accessCode,
@@ -47,6 +47,7 @@ export default function SetupPage() {
       const data = await res.json();
       if (!res.ok) return toast.error(data.error ?? "Setup failed");
 
+      saveToken(data.token);
       toast.success("Device registered!");
       router.replace(data.role === "cashier" ? "/pos" : "/dashboard");
     } catch {

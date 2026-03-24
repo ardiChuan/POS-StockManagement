@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 
 interface RegisterData {
@@ -28,7 +29,7 @@ export default function EodPage() {
   const [submitting, setSubmitting] = useState(false);
 
   async function loadData() {
-    const res = await fetch("/api/cash-register/today");
+    const res = await apiFetch("/api/cash-register/today");
     setData(await res.json());
   }
 
@@ -39,7 +40,7 @@ export default function EodPage() {
     if (!actualCash) return;
     setSubmitting(true);
     try {
-      const res = await fetch("/api/cash-register/close", {
+      const res = await apiFetch("/api/cash-register/close", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ actual_cash: Number(actualCash), notes: notes.trim() || null }),

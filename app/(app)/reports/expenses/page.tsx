@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api";
 import { formatCurrency, formatDateTime, todayDateString } from "@/lib/utils";
 import type { Expense } from "@/types";
 
@@ -16,7 +17,7 @@ export default function ReportsExpensesPage() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch(`/api/reports/expenses?from=${from}&to=${to}`);
+    const res = await apiFetch(`/api/reports/expenses?from=${from}&to=${to}`);
     const data = await res.json();
     setTotal(data.total ?? 0);
     setItems(data.items ?? []);
