@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import type { Expense } from "@/types";
 
@@ -17,7 +18,7 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
 
   async function loadExpenses() {
-    const res = await fetch("/api/expenses");
+    const res = await apiFetch("/api/expenses");
     const data = await res.json();
     setExpenses(data.data ?? []);
     setTotal(data.data?.reduce((s: number, e: Expense) => s + Number(e.amount), 0) ?? 0);
@@ -31,7 +32,7 @@ export default function ExpensesPage() {
     if (!description.trim() || !amount) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/expenses", {
+      const res = await apiFetch("/api/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: description.trim(), amount: Number(amount) }),

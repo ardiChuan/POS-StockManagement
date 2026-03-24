@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 
 export default function AdminStorePage() {
@@ -12,7 +13,7 @@ export default function AdminStorePage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/store-config").then((r) => r.json()).then((d) => setStoreName(d.store_name ?? ""));
+    apiFetch("/api/store-config").then((r) => r.json()).then((d) => setStoreName(d.store_name ?? ""));
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -20,7 +21,7 @@ export default function AdminStorePage() {
     if (newCode && newCode !== confirmCode) return toast.error("Access codes don't match");
     setSaving(true);
     try {
-      const res = await fetch("/api/store-config", {
+      const res = await apiFetch("/api/store-config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

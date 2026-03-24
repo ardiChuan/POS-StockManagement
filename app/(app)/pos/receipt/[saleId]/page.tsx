@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { apiFetch } from "@/lib/api";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import type { Sale, SaleItem, Customer, Device } from "@/types";
 
@@ -16,8 +17,8 @@ export default function ReceiptPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/sales/${saleId}`).then((r) => r.json()),
-      fetch("/api/store-config").then((r) => r.json()),
+      apiFetch(`/api/sales/${saleId}`).then((r) => r.json()),
+      apiFetch("/api/store-config").then((r) => r.json()),
     ]).then(([saleData, config]) => {
       setSale(saleData);
       setStoreName(config.store_name ?? "Arowana Store");

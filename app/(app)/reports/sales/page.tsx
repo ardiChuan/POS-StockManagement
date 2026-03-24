@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api";
 import { formatCurrency, todayDateString } from "@/lib/utils";
 
 interface SalesReport {
@@ -20,7 +21,7 @@ export default function ReportsSalesPage() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch(`/api/reports/sales?from=${from}&to=${to}`);
+    const res = await apiFetch(`/api/reports/sales?from=${from}&to=${to}`);
     setData(await res.json());
     setLoading(false);
   }

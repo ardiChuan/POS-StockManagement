@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
+import { apiFetch } from "@/lib/api";
 import { enqueueSale, flushQueue } from "@/lib/offline-queue";
 import type { Fish, Product, ProductVariant, Customer, CartItem, DiscountType } from "@/types";
 
@@ -42,8 +43,8 @@ export default function PosPage() {
     if (!background) setLoading(true);
     try {
       const [fishRes, prodRes] = await Promise.all([
-        fetch("/api/fish?status=available"),
-        fetch("/api/products"),
+        apiFetch("/api/fish?status=available"),
+        apiFetch("/api/products"),
       ]);
       const [fishData, prodData] = await Promise.all([fishRes.json(), prodRes.json()]);
       _cache.fish = fishData;
@@ -82,7 +83,7 @@ export default function PosPage() {
       return;
     }
     const t = setTimeout(async () => {
-      const res = await fetch(`/api/customers?q=${encodeURIComponent(customerQuery)}`);
+      const res = await apiFetch(`/api/customers?q=${encodeURIComponent(customerQuery)}`);
       setCustomerResults(await res.json());
     }, 300);
     return () => clearTimeout(t);
@@ -175,9 +176,8 @@ export default function PosPage() {
     }
 
     try {
-      const res = await fetch("/api/sales", {
+      const res = await apiFetch("/api/sales", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
