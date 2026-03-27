@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
+import type { DeviceRole } from "@/types";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
@@ -9,12 +10,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!jwt) redirect("/setup");
 
   // Decode JWT payload (Railway verifies the signature on every API call)
-  let role = "cashier";
+  let role: DeviceRole = "cashier";
   try {
     const payload = JSON.parse(
       Buffer.from(jwt.split(".")[1], "base64url").toString()
     );
-    role = payload.role ?? "cashier";
+    role = (payload.role ?? "cashier") as DeviceRole;
   } catch {
     redirect("/setup");
   }
