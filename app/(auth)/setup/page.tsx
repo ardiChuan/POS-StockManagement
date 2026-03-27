@@ -48,6 +48,7 @@ export default function SetupPage() {
       if (!res.ok) return toast.error(data.error ?? "Setup failed");
 
       saveToken(data.token);
+      document.cookie = `pos_jwt=${data.token}; path=/; max-age=${60 * 60 * 24 * 365 * 10}; samesite=lax`;
       toast.success("Device registered!");
       router.replace(data.role === "cashier" ? "/pos" : "/dashboard");
     } catch {
