@@ -1,30 +1,17 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getDeviceFromCookies } from "@/lib/auth";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
-import type { DeviceRole } from "@/types";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-  const jwt = cookieStore.get("pos_jwt")?.value;
-  if (!jwt) redirect("/setup");
-
-  // Decode JWT payload (Railway verifies the signature on every API call)
-  let role: DeviceRole = "cashier";
-  try {
-    const payload = JSON.parse(
-      Buffer.from(jwt.split(".")[1], "base64url").toString()
-    );
-    role = (payload.role ?? "cashier") as DeviceRole;
-  } catch {
-    redirect("/setup");
-  }
+  const device = await getDeviceFromCookies();
+  if (!device) redirect("/setup");
 
   return (
     <div className="min-h-screen flex flex-col pb-20">
       <OfflineBanner />
       <main className="flex-1">{children}</main>
-      <BottomNav role={role} />
+      <BottomNav role={device.role} />
     </div>
   );
 }

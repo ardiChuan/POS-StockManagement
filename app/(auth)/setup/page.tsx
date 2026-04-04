@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { apiFetch, saveToken } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import type { DeviceRole } from "@/types";
 
 export default function SetupPage() {
@@ -47,8 +47,6 @@ export default function SetupPage() {
       const data = await res.json();
       if (!res.ok) return toast.error(data.error ?? "Setup failed");
 
-      saveToken(data.token);
-      document.cookie = `pos_jwt=${data.token}; path=/; max-age=${60 * 60 * 24 * 365 * 10}; samesite=lax`;
       toast.success("Device registered!");
       router.replace(data.role === "cashier" ? "/pos" : "/dashboard");
     } catch {
