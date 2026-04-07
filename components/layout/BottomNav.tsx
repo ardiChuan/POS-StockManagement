@@ -6,9 +6,7 @@ import type { DeviceRole } from "@/types";
 import {
   LayoutDashboard,
   ShoppingCart,
-  Fish,
   Package,
-  ClipboardList,
   Wallet,
   Banknote,
   BarChart2,
@@ -26,9 +24,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["owner", "admin"] },
   { href: "/pos", label: "POS", icon: ShoppingCart, roles: ["owner", "admin", "cashier"] },
-  { href: "/fish", label: "Fish", icon: Fish, roles: ["owner", "admin", "cashier"] },
-  { href: "/products", label: "Products", icon: Package, roles: ["owner", "admin", "cashier"] },
-  { href: "/stock", label: "Stock", icon: ClipboardList, roles: ["owner", "admin"] },
+  { href: "/products", label: "Stocks", icon: Package, roles: ["owner", "admin", "cashier"] },
   { href: "/expenses", label: "Expenses", icon: Wallet, roles: ["owner", "admin", "cashier"] },
   { href: "/eod", label: "Cash EOD", icon: Banknote, roles: ["owner", "admin", "cashier"] },
   { href: "/reports", label: "Reports", icon: BarChart2, roles: ["owner", "admin"] },
