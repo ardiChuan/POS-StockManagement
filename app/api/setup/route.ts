@@ -9,8 +9,7 @@ import type { DeviceRole } from "@/types";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { store_name, access_code, name, role } = body as {
-      store_name?: string;
+    const { access_code, name, role } = body as {
       access_code: string;
       name: string;
       role: DeviceRole;
@@ -34,13 +33,9 @@ export async function POST(req: NextRequest) {
 
     if (isFirstSetup) {
       // First-time setup: create store config with provided access code
-      if (!store_name) {
-        return NextResponse.json({ error: "store_name required for first setup" }, { status: 400 });
-      }
       const hashedCode = await bcrypt.hash(access_code, 10);
       await supabase.from("store_config").upsert({
         id: 1,
-        store_name,
         access_code: hashedCode,
         setup_complete: true,
         updated_at: new Date().toISOString(),
@@ -97,12 +92,11 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   const { data: config } = await supabase
     .from("store_config")
-    .select("setup_complete, store_name")
+    .select("setup_complete")
     .eq("id", 1)
     .single();
 
   return NextResponse.json({
     setup_complete: config?.setup_complete ?? false,
-    store_name: config?.store_name ?? null,
   });
 }

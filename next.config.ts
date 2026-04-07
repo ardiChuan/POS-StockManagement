@@ -24,8 +24,7 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@react-pdf/renderer"],
-  // Turbopack is default in Next.js 16; declare it explicitly to allow webpack plugins from next-pwa
-  experimental: {},
+  turbopack: {},
 };
 
 export default withPWA(nextConfig);
