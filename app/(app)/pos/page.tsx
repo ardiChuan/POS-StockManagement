@@ -12,20 +12,18 @@ import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
 import { apiFetch } from "@/lib/api";
 import { enqueueSale, flushQueue } from "@/lib/offline-queue";
-import type { Fish, Product, ProductVariant, Customer, CartItem, DiscountType } from "@/types";
+import type { Product, ProductVariant, Customer, CartItem, DiscountType } from "@/types";
 
 type ProductWithVariants = Product & { variants: ProductVariant[] };
-const _cache: { fish: Fish[] | null; products: ProductWithVariants[] | null } = { fish: null, products: null };
+const _cache: { products: ProductWithVariants[] | null } = { products: null };
 
 export default function PosPage() {
   const router = useRouter();
   const cart = useCart();
 
-  const [tab, setTab] = useState<"fish" | "products">("fish");
   const [search, setSearch] = useState("");
-  const [fish, setFish] = useState<Fish[]>(_cache.fish ?? []);
   const [products, setProducts] = useState<ProductWithVariants[]>(_cache.products ?? []);
-  const [loading, setLoading] = useState(_cache.fish === null);
+  const [loading, setLoading] = useState(_cache.products === null);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
 
@@ -42,23 +40,18 @@ export default function PosPage() {
   const loadData = useCallback(async (background = false) => {
     if (!background) setLoading(true);
     try {
-      const [fishRes, prodRes] = await Promise.all([
-        apiFetch("/api/fish?status=available"),
-        apiFetch("/api/products"),
-      ]);
-      const [fishData, prodData] = await Promise.all([fishRes.json(), prodRes.json()]);
-      _cache.fish = fishData;
-      _cache.products = prodData;
-      setFish(fishData);
-      setProducts(prodData);
+      const res = await apiFetch("/api/products");
+      const data = await res.json();
+      _cache.products = data;
+      setProducts(data);
     } finally {
       if (!background) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (_cache.fish) {
-      loadData(true); // already showing cached data, refresh in background
+    if (_cache.products) {
+      loadData(true);
     } else {
       loadData();
     }
@@ -89,28 +82,9 @@ export default function PosPage() {
     return () => clearTimeout(t);
   }, [customerQuery, customerMode]);
 
-  const filteredFish = fish.filter((f) =>
-    !search || f.fish_display_id.toLowerCase().includes(search.toLowerCase()) ||
-    f.size_label?.toLowerCase().includes(search.toLowerCase()) ||
-    f.tank_id.toLowerCase().includes(search.toLowerCase())
-  );
-
   const filteredProducts = products.filter((p) =>
     !search || p.name.toLowerCase().includes(search.toLowerCase())
   );
-
-  function addFishToCart(f: Fish) {
-    const item: CartItem = {
-      key: `fish-${f.id}`,
-      item_type: "fish",
-      fish_id: f.id,
-      description: `${f.fish_display_id}${f.size_label ? ` (${f.size_label})` : ""}`,
-      unit_price: f.price,
-      qty: 1,
-    };
-    cart.addItem(item);
-    toast.success(`${f.fish_display_id} added to cart`);
-  }
 
   function addProductToCart(p: Product & { variants: ProductVariant[] }, variant?: ProductVariant) {
     if (p.variants.length > 0 && !variant) {
@@ -139,7 +113,6 @@ export default function PosPage() {
     const payload = {
       items: cart.items.map((i) => ({
         item_type: i.item_type,
-        fish_id: i.fish_id,
         product_id: i.product_id,
         variant_id: i.variant_id,
         description: i.description,
@@ -159,11 +132,6 @@ export default function PosPage() {
     if (!navigator.onLine) {
       if (cart.payment_method !== "cash") {
         toast.error("Transfer payments require an internet connection");
-        setCheckingOut(false);
-        return;
-      }
-      if (cart.items.some((i) => i.item_type === "fish")) {
-        toast.error("Individual fish sales require an internet connection (availability check needed)");
         setCheckingOut(false);
         return;
       }
@@ -198,7 +166,7 @@ export default function PosPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-80px)]">
       {/* Header */}
-      <div className="p-3 border-b bg-white sticky top-0 z-10 space-y-2">
+      <div className="p-3 border-b bg-white sticky top-0 z-10">
         <div className="flex gap-2">
           <Input
             placeholder="Search…"
@@ -229,43 +197,15 @@ export default function PosPage() {
             </SheetContent>
           </Sheet>
         </div>
-
-        <div className="flex gap-2">
-          <Button size="sm" variant={tab === "fish" ? "default" : "outline"} onClick={() => setTab("fish")} className="flex-1">
-            🐟 Fish
-          </Button>
-          <Button size="sm" variant={tab === "products" ? "default" : "outline"} onClick={() => setTab("products")} className="flex-1">
-            📦 Products
-          </Button>
-        </div>
       </div>
 
       {/* Item Grid */}
       <div className="flex-1 overflow-y-auto p-3">
         {loading ? (
           <p className="text-muted-foreground text-center mt-8">Loading…</p>
-        ) : tab === "fish" ? (
-          <div className="grid grid-cols-2 gap-2">
-            {filteredFish.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => addFishToCart(f)}
-                className="bg-white border rounded-xl p-3 text-left active:scale-95 transition-transform shadow-sm"
-              >
-                {f.photo_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={f.photo_url} alt="" className="w-full h-24 object-cover rounded-lg mb-2" />
-                )}
-                <p className="font-semibold text-sm">{f.fish_display_id}</p>
-                <p className="text-xs text-muted-foreground">{f.tank_id}{f.size_label ? ` · ${f.size_label}` : ""}</p>
-                <p className="font-bold mt-1">{formatCurrency(f.price)}</p>
-              </button>
-            ))}
-            {!filteredFish.length && <p className="col-span-2 text-center text-muted-foreground mt-8">No fish available</p>}
-          </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            {filteredProducts.filter(p => !p.is_fish).concat(filteredProducts.filter(p => p.is_fish)).map((p) => {
+            {filteredProducts.map((p) => {
               const stockQty = p.variants.length ? p.variants.reduce((s, v) => s + v.stock_qty, 0) : (p.stock_qty ?? 0);
               const isOutOfStock = stockQty === 0;
               return (
@@ -357,15 +297,13 @@ function CartPanel({
                 <p className="text-sm font-medium truncate">{item.description}</p>
                 <p className="text-xs text-muted-foreground">{formatCurrency(item.unit_price)}</p>
               </div>
-              {item.item_type !== "fish" && (
-                <div className="flex items-center gap-1">
-                  <Button size="icon" variant="outline" className="h-7 w-7 text-xs"
-                    onClick={() => cart.setQty(item.key, item.qty - 1)}>−</Button>
-                  <span className="w-6 text-center text-sm">{item.qty}</span>
-                  <Button size="icon" variant="outline" className="h-7 w-7 text-xs"
-                    onClick={() => cart.setQty(item.key, item.qty + 1)}>+</Button>
-                </div>
-              )}
+              <div className="flex items-center gap-1">
+                <Button size="icon" variant="outline" className="h-7 w-7 text-xs"
+                  onClick={() => cart.setQty(item.key, item.qty - 1)}>−</Button>
+                <span className="w-6 text-center text-sm">{item.qty}</span>
+                <Button size="icon" variant="outline" className="h-7 w-7 text-xs"
+                  onClick={() => cart.setQty(item.key, item.qty + 1)}>+</Button>
+              </div>
               <p className="text-sm font-bold w-20 text-right">{formatCurrency(item.unit_price * item.qty)}</p>
               <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500"
                 onClick={() => cart.removeItem(item.key)}>×</Button>
