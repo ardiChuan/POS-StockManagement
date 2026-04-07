@@ -10,12 +10,9 @@ export interface StoreConfig {
 
 // ─── Devices ─────────────────────────────────────────────────────────────────
 
-export type DeviceRole = 'owner' | 'admin' | 'cashier';
-
 export interface Device {
   id: string;
   name: string;
-  role: DeviceRole;
   device_token: string;
   is_active: boolean;
   registered_at: string;
@@ -26,7 +23,6 @@ export interface Device {
 export interface DeviceSession {
   id: string;
   name: string;
-  role: DeviceRole;
 }
 
 // ─── Categories ──────────────────────────────────────────────────────────────

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDeviceFromCookies, requireRole, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies, AuthError } from "@/lib/auth";
 import { uploadFishPhoto } from "@/lib/supabase/storage";
 
 export async function POST(req: NextRequest) {
   try {
     const device = await getDeviceFromCookies();
-    requireRole(device, ["admin", "owner"]);
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

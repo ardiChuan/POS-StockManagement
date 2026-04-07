@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { getDeviceFromCookies, requireRole, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies, AuthError } from "@/lib/auth";
 
 export async function GET() {
   try {
     const device = await getDeviceFromCookies();
-    requireRole(device, ["admin", "owner"]);
 
     type VariantRow = { size_label: string; price: number; stock_qty: number; low_stock_threshold: number };
     type ProductRow = { id: string; name: string; is_fish: boolean; price: number | null; stock_qty: number | null; low_stock_threshold: number; variants: VariantRow[] };

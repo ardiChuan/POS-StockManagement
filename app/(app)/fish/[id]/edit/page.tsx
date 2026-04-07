@@ -5,7 +5,7 @@ import { FishForm } from "@/components/fish/FishForm";
 
 export default async function EditFishPage({ params }: { params: Promise<{ id: string }> }) {
   const device = await getDeviceFromCookies();
-  if (!device || device.role === "cashier") redirect("/fish");
+  if (!device) redirect("/setup");
 
   const { id } = await params;
   const { data: fish } = await supabase.from("fish").select("*").eq("id", id).single();

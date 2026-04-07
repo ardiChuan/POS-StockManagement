@@ -5,7 +5,7 @@ import { ProductForm } from "@/components/products/ProductForm";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const device = await getDeviceFromCookies();
-  if (!device || device.role === "cashier") redirect("/products");
+  if (!device) redirect("/setup");
 
   const { id } = await params;
   const { data: product } = await supabase

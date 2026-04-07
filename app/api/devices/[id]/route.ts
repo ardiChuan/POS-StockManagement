@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { getDeviceFromCookies, requireRole, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies, AuthError } from "@/lib/auth";
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const device = await getDeviceFromCookies();
-    requireRole(device, ["admin", "owner"]);
 
     const { id } = await params;
 

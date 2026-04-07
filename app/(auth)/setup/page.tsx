@@ -4,16 +4,13 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
-import type { DeviceRole } from "@/types";
 
 export default function SetupPage() {
   const router = useRouter();
   const [isFirstSetup, setIsFirstSetup] = useState<boolean | null>(null);
   const [name, setName] = useState("");
-  const [role, setRole] = useState<DeviceRole>("cashier");
   const [accessCode, setAccessCode] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -34,14 +31,13 @@ export default function SetupPage() {
         body: JSON.stringify({
           access_code: accessCode,
           name: name.trim(),
-          role,
         }),
       });
       const data = await res.json();
       if (!res.ok) return toast.error(data.error ?? "Setup failed");
 
       toast.success("Device registered!");
-      router.replace(data.role === "cashier" ? "/pos" : "/dashboard");
+      router.replace("/dashboard");
     } catch {
       toast.error("Network error");
     } finally {
@@ -73,20 +69,6 @@ export default function SetupPage() {
               onChange={(e) => setName(e.target.value)}
               required
             />
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="role">Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as DeviceRole)}>
-              <SelectTrigger id="role">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="owner">Owner</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="cashier">Cashier</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-1">

@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { supabase } from './supabase/server';
-import type { Device, DeviceRole, DeviceSession } from '@/types';
+import type { Device, DeviceSession } from '@/types';
 
 const COOKIE_NAME = 'pos_device_token';
 
@@ -18,7 +18,6 @@ export async function getDeviceFromCookies(): Promise<Device | null> {
 
   if (error || !data) return null;
 
-  // Update last_seen_at in the background (don't await)
   supabase
     .from('devices')
     .update({ last_seen_at: new Date().toISOString() })
@@ -31,16 +30,7 @@ export async function getDeviceFromCookies(): Promise<Device | null> {
 export async function getSession(): Promise<DeviceSession | null> {
   const device = await getDeviceFromCookies();
   if (!device) return null;
-  return { id: device.id, name: device.name, role: device.role };
-}
-
-export function requireRole(device: Device | null, roles: DeviceRole[]): void {
-  if (!device) {
-    throw new AuthError('Not authenticated', 401);
-  }
-  if (!roles.includes(device.role)) {
-    throw new AuthError('Insufficient permissions', 403);
-  }
+  return { id: device.id, name: device.name };
 }
 
 export class AuthError extends Error {
@@ -59,7 +49,7 @@ export function deviceCookieOptions() {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
-    maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
+    maxAge: 60 * 60 * 24 * 365 * 10,
     path: '/',
   };
 }

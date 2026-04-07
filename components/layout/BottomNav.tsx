@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import type { DeviceRole } from "@/types";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -17,21 +16,20 @@ interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
-  roles: DeviceRole[];
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["owner", "admin"] },
-  { href: "/pos", label: "POS", icon: ShoppingCart, roles: ["owner", "admin", "cashier"] },
-  { href: "/products", label: "Stocks", icon: Package, roles: ["owner", "admin", "cashier"] },
-  { href: "/expenses", label: "Expenses", icon: Wallet, roles: ["owner", "admin", "cashier"] },
-  { href: "/eod", label: "Cash EOD", icon: Banknote, roles: ["owner", "admin", "cashier"] },
-  { href: "/reports", label: "Reports", icon: BarChart2, roles: ["owner", "admin"] },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/pos", label: "POS", icon: ShoppingCart },
+  { href: "/products", label: "Stocks", icon: Package },
+  { href: "/expenses", label: "Expenses", icon: Wallet },
+  { href: "/eod", label: "Cash EOD", icon: Banknote },
+  { href: "/reports", label: "Reports", icon: BarChart2 },
 ];
 
-export function BottomNav({ role }: { role: DeviceRole }) {
+export function BottomNav() {
   const pathname = usePathname();
-  const items = NAV_ITEMS.filter((i) => i.roles.includes(role));
+  const items = NAV_ITEMS;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white shadow-[0_-1px_4px_rgba(0,0,0,0.08)] safe-area-inset-bottom">

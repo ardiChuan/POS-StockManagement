@@ -11,7 +11,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen flex flex-col pb-20">
       <OfflineBanner />
       <main className="flex-1">{children}</main>
-      <BottomNav role={device.role} />
+      <BottomNav />
     </div>
   );
 }

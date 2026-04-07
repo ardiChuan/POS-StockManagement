@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { getDeviceFromCookies, requireRole, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies, AuthError } from "@/lib/auth";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string; vid: string }> }) {
   try {
     const device = await getDeviceFromCookies();
-    requireRole(device, ["admin", "owner"]);
 
     const { vid } = await params;
     const { size_label, price, stock_qty, low_stock_threshold } = await req.json();
@@ -34,7 +33,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string; vid: string }> }) {
   try {
     const device = await getDeviceFromCookies();
-    requireRole(device, ["admin", "owner"]);
 
     const { id: product_id, vid } = await params;
     const { error } = await supabase.from("product_variants").delete().eq("id", vid);

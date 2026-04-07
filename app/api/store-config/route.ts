@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { supabase } from "@/lib/supabase/server";
-import { getDeviceFromCookies, requireRole, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies, AuthError } from "@/lib/auth";
 
 export async function GET() {
   const device = await getDeviceFromCookies();
@@ -20,7 +20,6 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   try {
     const device = await getDeviceFromCookies();
-    requireRole(device, ["admin", "owner"]);
 
     const { store_name, new_access_code } = await req.json();
     const updates: Record<string, string> = { updated_at: new Date().toISOString() };

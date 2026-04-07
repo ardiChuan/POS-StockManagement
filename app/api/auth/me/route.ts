@@ -6,5 +6,5 @@ export async function GET() {
   if (!device) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  return NextResponse.json({ id: device.id, name: device.name, role: device.role });
+  return NextResponse.json({ id: device.id, name: device.name });
 }

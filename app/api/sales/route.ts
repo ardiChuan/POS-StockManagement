@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { getDeviceFromCookies, requireRole, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies, AuthError } from "@/lib/auth";
 import type { CreateSaleRequest, DiscountType, PaymentMethod } from "@/types";
 
 // GET /api/sales — admin + owner only
 export async function GET(req: NextRequest) {
   try {
     const device = await getDeviceFromCookies();
-    requireRole(device, ["admin", "owner"]);
 
     const { searchParams } = new URL(req.url);
     const from = searchParams.get("from");

@@ -16,7 +16,7 @@ type ExpenseRow = { amount: number };
 
 export default async function DashboardPage() {
   const device = await getDeviceFromCookies();
-  if (!device || device.role === "cashier") redirect("/pos");
+  if (!device) redirect("/setup");
 
   const today = new Date().toISOString().split("T")[0];
   const todayStart = `${today}T00:00:00.000Z`;

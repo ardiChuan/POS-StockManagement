@@ -21,17 +21,14 @@ export default async function FishPage() {
 
   const available = fish?.filter((f) => f.status === "available") ?? [];
   const sold = fish?.filter((f) => f.status === "sold") ?? [];
-  const canEdit = device.role !== "cashier";
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="font-bold text-xl">Fish</h1>
-        {canEdit && (
-          <Link href="/fish/new">
-            <Button size="sm">+ Add Fish</Button>
-          </Link>
-        )}
+        <Link href="/fish/new">
+          <Button size="sm">+ Add Fish</Button>
+        </Link>
       </div>
 
       <p className="text-sm text-muted-foreground">{available.length} available · {sold.length} sold</p>
@@ -51,11 +48,9 @@ export default async function FishPage() {
               {f.size_label && <p className="text-xs text-muted-foreground">{f.size_label}</p>}
               <p className="font-bold mt-0.5">{formatCurrency(f.price)}</p>
             </div>
-            {canEdit && (
-              <Link href={`/fish/${f.id}/edit`}>
-                <Button size="sm" variant="ghost">Edit</Button>
-              </Link>
-            )}
+            <Link href={`/fish/${f.id}/edit`}>
+              <Button size="sm" variant="ghost">Edit</Button>
+            </Link>
           </div>
         ))}
       </div>

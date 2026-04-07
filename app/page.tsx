@@ -8,9 +8,5 @@ export default async function RootPage() {
     redirect("/setup");
   }
 
-  if (device.role === "cashier") {
-    redirect("/pos");
-  }
-
   redirect("/dashboard");
 }

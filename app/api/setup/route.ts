@@ -3,23 +3,18 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { supabase } from "@/lib/supabase/server";
 import { deviceCookieOptions } from "@/lib/auth";
-import type { DeviceRole } from "@/types";
 
 // POST /api/setup — handles both first-time store setup and subsequent device registration
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { access_code, name, role } = body as {
+    const { access_code, name } = body as {
       access_code: string;
       name: string;
-      role: DeviceRole;
     };
 
-    if (!access_code || !name || !role) {
+    if (!access_code || !name) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-    if (!["owner", "admin", "cashier"].includes(role)) {
-      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
     // Check store config
@@ -54,7 +49,6 @@ export async function POST(req: NextRequest) {
       .from("devices")
       .insert({
         name,
-        role,
         device_token: token,
         is_active: true,
         registered_at: new Date().toISOString(),
@@ -69,7 +63,6 @@ export async function POST(req: NextRequest) {
     const cookieOpts = deviceCookieOptions();
     const response = NextResponse.json({
       success: true,
-      role: device.role,
       name: device.name,
     });
 
