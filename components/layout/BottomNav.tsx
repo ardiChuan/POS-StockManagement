@@ -10,7 +10,6 @@ import {
   Wallet,
   Banknote,
   BarChart2,
-  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,7 +27,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/expenses", label: "Expenses", icon: Wallet, roles: ["owner", "admin", "cashier"] },
   { href: "/eod", label: "Cash EOD", icon: Banknote, roles: ["owner", "admin", "cashier"] },
   { href: "/reports", label: "Reports", icon: BarChart2, roles: ["owner", "admin"] },
-  { href: "/admin", label: "Admin", icon: Settings, roles: ["owner", "admin"] },
 ];
 
 export function BottomNav({ role }: { role: DeviceRole }) {
