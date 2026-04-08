@@ -41,7 +41,10 @@ export default function ReportsSalesPage() {
           <Label className="text-xs">To</Label>
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
-        <Button size="sm" onClick={load} disabled={loading}>Go</Button>
+        <div className="space-y-1">
+          <Label className="text-xs invisible">Go</Label>
+          <Button size="sm" onClick={load} disabled={loading}>Go</Button>
+        </div>
       </div>
 
       {data && (
