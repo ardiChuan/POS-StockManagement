@@ -42,7 +42,7 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center min-w-[60px] py-1.5 px-2 text-[10px] gap-0.5 flex-shrink-0 rounded-xl transition-colors",
+                "flex flex-col items-center justify-center flex-1 min-w-[50px] py-1.5 px-1 text-[10px] gap-0.5 rounded-xl transition-colors",
                 active
                   ? "bg-primary text-primary-foreground font-semibold"
                   : "text-muted-foreground hover:text-foreground"
