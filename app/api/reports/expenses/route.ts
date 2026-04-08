@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await supabase
       .from("expenses")
-      .select("*")
+      .select("*, device:devices(id,name)")
       .gte("created_at", `${from}T00:00:00.000Z`)
       .lte("created_at", `${to}T23:59:59.999Z`)
       .order("created_at", { ascending: false });
