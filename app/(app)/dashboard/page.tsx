@@ -69,31 +69,31 @@ export default async function DashboardPage() {
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Card className="border-l-4 border-l-emerald-500 overflow-hidden">
+        <Card className="border-l-4 border-l-red-500 overflow-hidden">
           <CardContent className="px-3 py-3">
             <div className="flex items-start justify-between mb-1">
               <p className="text-xs text-muted-foreground">Today&apos;s Revenue</p>
-              <TrendingUp size={16} className="text-emerald-500 flex-shrink-0" strokeWidth={1.8} />
+              <TrendingUp size={16} className="text-red-500 flex-shrink-0" strokeWidth={1.8} />
             </div>
             <p className="font-bold text-xl leading-tight">{formatCurrency(totalRevenue)}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{todaySales?.length ?? 0} transactions</p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-sky-500 overflow-hidden">
+        <Card className="border-l-4 border-l-red-500 overflow-hidden">
           <CardContent className="px-3 py-3">
             <div className="flex items-start justify-between mb-1">
               <p className="text-xs text-muted-foreground">Cash Balance</p>
-              <Wallet size={16} className="text-sky-500 flex-shrink-0" strokeWidth={1.8} />
+              <Wallet size={16} className="text-red-500 flex-shrink-0" strokeWidth={1.8} />
             </div>
             <p className="font-bold text-xl leading-tight">{formatCurrency(cashBalance)}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Opening: {formatCurrency(openingBalance)}</p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-amber-500 overflow-hidden">
+        <Card className="border-l-4 border-l-red-500 overflow-hidden">
           <CardContent className="px-3 py-3">
             <div className="flex items-start justify-between mb-1">
               <p className="text-xs text-muted-foreground">Cash / Transfer</p>
-              <ArrowLeftRight size={16} className="text-amber-500 flex-shrink-0" strokeWidth={1.8} />
+              <ArrowLeftRight size={16} className="text-red-500 flex-shrink-0" strokeWidth={1.8} />
             </div>
             <p className="font-bold text-lg leading-tight">{formatCurrency(cashRevenue)}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{formatCurrency(transferRevenue)} transfer</p>
@@ -105,7 +105,7 @@ export default async function DashboardPage() {
               <p className="text-xs text-muted-foreground">Expenses Today</p>
               <TrendingDown size={16} className="text-red-500 flex-shrink-0" strokeWidth={1.8} />
             </div>
-            <p className="font-bold text-xl leading-tight text-red-600">{formatCurrency(expensesTotal)}</p>
+            <p className="font-bold text-xl leading-tight text-black-600">{formatCurrency(expensesTotal)}</p>
           </CardContent>
         </Card>
       </div>
