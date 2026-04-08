@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const [{ data: sale }, { data: config }] = await Promise.all([
     supabase
       .from("sales")
-      .select("*, customer:customers(*), device:devices(id,name,role), items:sale_items(*)")
+      .select("*, customer:customers(*), device:devices(id,name), items:sale_items(*)")
       .eq("id", id)
       .single(),
     supabase.from("store_config").select("store_name").eq("id", 1).single(),

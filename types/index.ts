@@ -209,12 +209,3 @@ export interface CreateSaleRequest {
   notes?: string;
 }
 
-export interface StockAlertItem {
-  id: string;
-  name: string;
-  size_label?: string;
-  stock_qty: number;
-  low_stock_threshold: number;
-  is_fish: boolean;
-  is_out_of_stock: boolean;
-}

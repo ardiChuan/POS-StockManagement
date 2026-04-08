@@ -9,18 +9,18 @@ type CashRegRow = { id: string; date: string; opening_balance: number; expected_
 export default async function ReportsCashRegisterPage() {
   const { data: rawData } = await supabase
     .from("cash_register")
-    .select("*, closed_by:devices(id,name,role)")
+    .select("*, closed_by:devices(id,name)")
     .order("date", { ascending: false })
     .limit(30);
   const data = rawData as CashRegRow[] | null;
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
-      <h1 className="font-bold text-xl">Cash Register History</h1>
+      <h1 className="font-bold text-2xl tracking-tight">Cash Register History</h1>
 
       <div className="space-y-2">
         {(data ?? []).map((row) => (
-          <div key={row.id} className="bg-white border rounded-xl p-3 space-y-2">
+          <div key={row.id} className="bg-card border rounded-xl p-3 space-y-2">
             <div className="flex justify-between items-center">
               <p className="font-semibold">{formatDate(row.date)}</p>
               {row.closed_at ? (

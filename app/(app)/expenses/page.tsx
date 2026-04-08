@@ -50,10 +50,10 @@ export default function ExpensesPage() {
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
-      <h1 className="font-bold text-xl">Expenses</h1>
+      <h1 className="font-bold text-2xl tracking-tight">Expenses</h1>
 
       {/* Add form */}
-      <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-4 space-y-3">
+      <form onSubmit={handleSubmit} className="bg-card border rounded-xl p-4 space-y-3">
         <p className="font-semibold text-sm">Record Expense</p>
         <div className="space-y-1">
           <Label>Description *</Label>
@@ -80,7 +80,7 @@ export default function ExpensesPage() {
       ) : (
         <div className="space-y-2">
           {expenses.map((exp) => (
-            <div key={exp.id} className="bg-white border rounded-xl p-3 flex justify-between items-start">
+            <div key={exp.id} className="bg-card border rounded-xl p-3 flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium">{exp.description}</p>
                 <p className="text-xs text-muted-foreground">{formatDateTime(exp.created_at)}</p>

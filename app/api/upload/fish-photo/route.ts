@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDeviceFromCookies, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies } from "@/lib/auth";
 import { uploadFishPhoto } from "@/lib/supabase/storage";
 
 export async function POST(req: NextRequest) {
@@ -18,7 +18,6 @@ export async function POST(req: NextRequest) {
     const url = await uploadFishPhoto(buffer, file.type, fishId);
     return NextResponse.json({ url });
   } catch (err) {
-    if (err instanceof AuthError) return NextResponse.json({ error: err.message }, { status: err.status });
     console.error("[upload/fish-photo]", err);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }

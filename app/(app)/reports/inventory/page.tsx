@@ -33,16 +33,16 @@ export default async function ReportsInventoryPage() {
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
-      <h1 className="font-bold text-xl">Inventory</h1>
+      <h1 className="font-bold text-2xl tracking-tight">Inventory</h1>
 
-      <div className="bg-white border rounded-xl p-3 text-sm">
+      <div className="bg-card border rounded-xl p-3 text-sm">
         <p className="font-semibold">Individual Fish Available</p>
         <p className="text-2xl font-bold">{fish?.length ?? 0}</p>
       </div>
 
       <div className="space-y-2">
         {rows.map((row) => (
-          <div key={row.key} className="bg-white border rounded-xl p-3 flex justify-between items-center">
+          <div key={row.key} className="bg-card border rounded-xl p-3 flex justify-between items-center">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate">{row.name}</p>
               <p className="text-xs text-muted-foreground">{formatCurrency(row.price)}</p>

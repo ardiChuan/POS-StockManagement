@@ -33,16 +33,6 @@ export async function getSession(): Promise<DeviceSession | null> {
   return { id: device.id, name: device.name };
 }
 
-export class AuthError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-  ) {
-    super(message);
-    this.name = 'AuthError';
-  }
-}
-
 export function deviceCookieOptions() {
   return {
     name: COOKIE_NAME,

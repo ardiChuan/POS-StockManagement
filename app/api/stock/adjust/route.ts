@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { getDeviceFromCookies, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -65,7 +65,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ stock_qty: newQty });
     }
   } catch (err) {
-    if (err instanceof AuthError) return NextResponse.json({ error: err.message }, { status: err.status });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

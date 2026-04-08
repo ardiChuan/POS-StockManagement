@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("expenses")
-    .select("*, device:devices(id,name,role)", { count: "exact" })
+    .select("*, device:devices(id,name)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase
     .from("expenses")
     .insert({ description: description.trim(), amount, device_id: device.id })
-    .select("*, device:devices(id,name,role)")
+    .select("*, device:devices(id,name)")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -28,7 +28,7 @@ export default function ReportsExpensesPage() {
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
-      <h1 className="font-bold text-xl">Expenses Report</h1>
+      <h1 className="font-bold text-2xl tracking-tight">Expenses Report</h1>
 
       <div className="flex gap-2 items-end">
         <div className="flex-1 space-y-1">
@@ -49,7 +49,7 @@ export default function ReportsExpensesPage() {
 
       <div className="space-y-2">
         {items.map((exp) => (
-          <div key={exp.id} className="bg-white border rounded-xl p-3 flex justify-between items-start">
+          <div key={exp.id} className="bg-card border rounded-xl p-3 flex justify-between items-start">
             <div>
               <p className="text-sm font-medium">{exp.description}</p>
               <p className="text-xs text-muted-foreground">{formatDateTime(exp.created_at)}</p>

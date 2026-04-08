@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { getDeviceFromCookies, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
@@ -22,7 +22,6 @@ export async function GET(req: NextRequest) {
     const total = (data as { amount: number }[] | null)?.reduce((s, r) => s + Number(r.amount), 0) ?? 0;
     return NextResponse.json({ from, to, total, items: data });
   } catch (err) {
-    if (err instanceof AuthError) return NextResponse.json({ error: err.message }, { status: err.status });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

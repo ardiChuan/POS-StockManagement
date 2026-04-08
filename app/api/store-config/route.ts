@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { supabase } from "@/lib/supabase/server";
-import { getDeviceFromCookies, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies } from "@/lib/auth";
 
 export async function GET() {
   const device = await getDeviceFromCookies();
@@ -36,7 +36,6 @@ export async function PUT(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data);
   } catch (err) {
-    if (err instanceof AuthError) return NextResponse.json({ error: err.message }, { status: err.status });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

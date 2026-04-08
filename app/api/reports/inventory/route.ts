@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { getDeviceFromCookies, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies } from "@/lib/auth";
 
 export async function GET() {
   try {
@@ -49,7 +49,6 @@ export async function GET() {
       individual_fish_available: fishAvailable?.length ?? 0,
     });
   } catch (err) {
-    if (err instanceof AuthError) return NextResponse.json({ error: err.message }, { status: err.status });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

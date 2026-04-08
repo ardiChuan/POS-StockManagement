@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { TrendingUp, Wallet, ArrowLeftRight, TrendingDown, AlertTriangle, PackageX } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -57,48 +58,66 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
-      <h1 className="font-bold text-xl">Dashboard</h1>
+      <h1 className="font-bold text-2xl tracking-tight">Dashboard</h1>
 
       {hasDiscrepancy && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
-          ⚠️ Cash discrepancy today: {formatCurrency(Math.abs(Number(cashRegister!.discrepancy)))}
-          {Number(cashRegister!.discrepancy) < 0 ? " short" : " over"}
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 flex items-start gap-2">
+          <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
+          <span>Cash discrepancy today: {formatCurrency(Math.abs(Number(cashRegister!.discrepancy)))}
+          {Number(cashRegister!.discrepancy) < 0 ? " short" : " over"}</span>
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Card>
-          <CardHeader className="pb-1 pt-3 px-3"><CardTitle className="text-xs text-muted-foreground">Today&apos;s Revenue</CardTitle></CardHeader>
-          <CardContent className="px-3 pb-3">
-            <p className="font-bold text-lg">{formatCurrency(totalRevenue)}</p>
-            <p className="text-xs text-muted-foreground">{todaySales?.length ?? 0} transactions</p>
+        <Card className="border-l-4 border-l-emerald-500 overflow-hidden">
+          <CardContent className="px-3 py-3">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-xs text-muted-foreground">Today&apos;s Revenue</p>
+              <TrendingUp size={16} className="text-emerald-500 flex-shrink-0" strokeWidth={1.8} />
+            </div>
+            <p className="font-bold text-xl leading-tight">{formatCurrency(totalRevenue)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{todaySales?.length ?? 0} transactions</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-1 pt-3 px-3"><CardTitle className="text-xs text-muted-foreground">Cash Balance</CardTitle></CardHeader>
-          <CardContent className="px-3 pb-3">
-            <p className="font-bold text-lg">{formatCurrency(cashBalance)}</p>
-            <p className="text-xs text-muted-foreground">Opening: {formatCurrency(openingBalance)}</p>
+        <Card className="border-l-4 border-l-sky-500 overflow-hidden">
+          <CardContent className="px-3 py-3">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-xs text-muted-foreground">Cash Balance</p>
+              <Wallet size={16} className="text-sky-500 flex-shrink-0" strokeWidth={1.8} />
+            </div>
+            <p className="font-bold text-xl leading-tight">{formatCurrency(cashBalance)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Opening: {formatCurrency(openingBalance)}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-1 pt-3 px-3"><CardTitle className="text-xs text-muted-foreground">Cash / Transfer</CardTitle></CardHeader>
-          <CardContent className="px-3 pb-3">
-            <p className="text-sm font-semibold">{formatCurrency(cashRevenue)}</p>
-            <p className="text-xs text-muted-foreground">{formatCurrency(transferRevenue)} transfer</p>
+        <Card className="border-l-4 border-l-amber-500 overflow-hidden">
+          <CardContent className="px-3 py-3">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-xs text-muted-foreground">Cash / Transfer</p>
+              <ArrowLeftRight size={16} className="text-amber-500 flex-shrink-0" strokeWidth={1.8} />
+            </div>
+            <p className="font-bold text-lg leading-tight">{formatCurrency(cashRevenue)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{formatCurrency(transferRevenue)} transfer</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-1 pt-3 px-3"><CardTitle className="text-xs text-muted-foreground">Expenses Today</CardTitle></CardHeader>
-          <CardContent className="px-3 pb-3">
-            <p className="font-bold text-lg text-red-600">{formatCurrency(expensesTotal)}</p>
+        <Card className="border-l-4 border-l-red-500 overflow-hidden">
+          <CardContent className="px-3 py-3">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-xs text-muted-foreground">Expenses Today</p>
+              <TrendingDown size={16} className="text-red-500 flex-shrink-0" strokeWidth={1.8} />
+            </div>
+            <p className="font-bold text-xl leading-tight text-red-600">{formatCurrency(expensesTotal)}</p>
           </CardContent>
         </Card>
       </div>
 
       {lowStockItems.length > 0 && (
         <Card>
-          <CardHeader className="pb-2 pt-3 px-3"><CardTitle className="text-sm">⚠️ Low Stock</CardTitle></CardHeader>
+          <CardHeader className="pb-2 pt-3 px-3">
+            <div className="flex items-center gap-1.5">
+              <PackageX size={15} className="text-amber-500" />
+              <CardTitle className="text-sm">Low Stock</CardTitle>
+            </div>
+          </CardHeader>
           <CardContent className="px-3 pb-3 space-y-1">
             {lowStockItems.slice(0, 6).map((item) => (
               <div key={item.id} className="flex justify-between text-sm">

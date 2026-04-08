@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
+import { Banknote, Building2 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { apiFetch } from "@/lib/api";
 import { enqueueSale, flushQueue } from "@/lib/offline-queue";
@@ -166,19 +167,19 @@ export default function PosPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-80px)]">
       {/* Header */}
-      <div className="p-3 border-b bg-white sticky top-0 z-10">
+      <div className="p-3 border-b bg-background sticky top-0 z-10">
         <div className="flex gap-2">
           <Input
-            placeholder="Search…"
+            placeholder="Search products…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1"
           />
           <Sheet open={cartOpen} onOpenChange={setCartOpen}>
-            <SheetTrigger className="relative inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-xs hover:bg-accent">
+            <SheetTrigger className="relative inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-sm hover:bg-primary/90 transition-colors">
               Cart
               {cartCount > 0 && (
-                <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-[10px]">
+                <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-[10px] bg-destructive">
                   {cartCount}
                 </Badge>
               )}
@@ -202,24 +203,43 @@ export default function PosPage() {
       {/* Item Grid */}
       <div className="flex-1 overflow-y-auto p-3">
         {loading ? (
-          <p className="text-muted-foreground text-center mt-8">Loading…</p>
+          <div className="grid grid-cols-2 gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-card border rounded-xl p-3 space-y-2 animate-pulse">
+                <div className="h-3 bg-muted rounded w-3/4" />
+                <div className="h-3 bg-muted rounded w-1/2" />
+                <div className="h-4 bg-muted rounded w-2/3 mt-2" />
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {filteredProducts.map((p) => {
               const stockQty = p.variants.length ? p.variants.reduce((s, v) => s + v.stock_qty, 0) : (p.stock_qty ?? 0);
               const isOutOfStock = stockQty === 0;
+              const lowThreshold = p.variants.length > 0
+                ? Math.max(...p.variants.map(v => v.low_stock_threshold))
+                : p.low_stock_threshold;
+              const stockStatus = isOutOfStock ? "out" : stockQty <= lowThreshold ? "low" : "ok";
               return (
                 <button
                   key={p.id}
                   onClick={() => !isOutOfStock && addProductToCart(p)}
                   disabled={isOutOfStock}
-                  className="bg-white border rounded-xl p-3 text-left active:scale-95 transition-transform shadow-sm disabled:opacity-50"
+                  className={cn(
+                    "bg-card border-l-4 border-t border-r border-b rounded-xl p-3 text-left active:scale-95 transition-all shadow-sm disabled:opacity-50 cursor-pointer hover:shadow-md",
+                    stockStatus === "out" && "border-l-red-400",
+                    stockStatus === "low" && "border-l-amber-400",
+                    stockStatus === "ok" && "border-l-transparent",
+                  )}
                 >
                   <p className="font-semibold text-sm leading-tight">{p.name}</p>
                   {p.variants.length > 0 ? (
                     <p className="text-xs text-muted-foreground">{p.variants.length} sizes</p>
                   ) : (
-                    <p className="text-xs text-muted-foreground">Stock: {stockQty}</p>
+                    <p className={cn("text-xs", stockStatus === "low" ? "text-amber-600 font-medium" : "text-muted-foreground")}>
+                      Stock: {stockQty}
+                    </p>
                   )}
                   <p className="font-bold mt-1 text-sm">
                     {p.variants.length > 0
@@ -247,7 +267,7 @@ export default function PosPage() {
                 key={v.id}
                 onClick={() => addProductToCart(variantProduct!, v)}
                 disabled={v.stock_qty === 0}
-                className="w-full flex justify-between items-center p-3 border rounded-xl text-left disabled:opacity-50 active:bg-zinc-50"
+                className="w-full flex justify-between items-center p-3 border rounded-xl text-left disabled:opacity-50 hover:bg-muted/50 transition-colors cursor-pointer"
               >
                 <span className="font-medium">{v.size_label}</span>
                 <span className="text-right">
@@ -292,16 +312,16 @@ function CartPanel({
       ) : (
         <div className="space-y-2">
           {cart.items.map((item) => (
-            <div key={item.key} className="flex items-center gap-2 bg-zinc-50 rounded-lg p-2">
+            <div key={item.key} className="flex items-center gap-2 bg-muted/50 rounded-lg p-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{item.description}</p>
                 <p className="text-xs text-muted-foreground">{formatCurrency(item.unit_price)}</p>
               </div>
               <div className="flex items-center gap-1">
-                <Button size="icon" variant="outline" className="h-7 w-7 text-xs"
+                <Button size="icon" variant="outline" className="h-9 w-9 text-base"
                   onClick={() => cart.setQty(item.key, item.qty - 1)}>−</Button>
                 <span className="w-6 text-center text-sm">{item.qty}</span>
-                <Button size="icon" variant="outline" className="h-7 w-7 text-xs"
+                <Button size="icon" variant="outline" className="h-9 w-9 text-base"
                   onClick={() => cart.setQty(item.key, item.qty + 1)}>+</Button>
               </div>
               <p className="text-sm font-bold w-20 text-right">{formatCurrency(item.unit_price * item.qty)}</p>
@@ -316,7 +336,7 @@ function CartPanel({
       <div className="space-y-2">
         <p className="text-sm font-medium">Customer</p>
         {cart.customer_name ? (
-          <div className="flex items-center gap-2 bg-zinc-50 rounded-lg p-2">
+          <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-2">
             <div className="flex-1">
               <p className="text-sm font-medium">{cart.customer_name}</p>
               {cart.customer_phone && <p className="text-xs text-muted-foreground">{cart.customer_phone}</p>}
@@ -335,7 +355,7 @@ function CartPanel({
           <div className="space-y-1">
             <Input placeholder="Name or phone…" value={customerQuery} onChange={(e) => setCustomerQuery(e.target.value)} />
             {customerResults.map((c) => (
-              <button key={c.id} className="w-full text-left p-2 rounded-lg bg-zinc-50 text-sm"
+              <button key={c.id} className="w-full text-left p-2 rounded-lg bg-muted/50 text-sm cursor-pointer hover:bg-muted transition-colors"
                 onClick={() => { cart.setCustomer(c.id, c.name, c.phone ?? ""); setCustomerMode("none"); setCustomerQuery(""); }}>
                 {c.name} {c.phone && <span className="text-muted-foreground">· {c.phone}</span>}
               </button>
@@ -389,15 +409,15 @@ function CartPanel({
       <div className="space-y-2">
         <p className="text-sm font-medium">Payment</p>
         <div className="flex gap-2">
-          <Button size="sm" variant={cart.payment_method === "cash" ? "default" : "outline"} className="flex-1"
-            onClick={() => cart.setPayment("cash")}>💵 Cash</Button>
-          <Button size="sm" variant={cart.payment_method === "bank_transfer" ? "default" : "outline"} className="flex-1"
-            onClick={() => cart.setPayment("bank_transfer")}>🏦 Transfer</Button>
+          <Button size="sm" variant={cart.payment_method === "cash" ? "default" : "outline"} className="flex-1 gap-1.5"
+            onClick={() => cart.setPayment("cash")}><Banknote size={14} /> Cash</Button>
+          <Button size="sm" variant={cart.payment_method === "bank_transfer" ? "default" : "outline"} className="flex-1 gap-1.5"
+            onClick={() => cart.setPayment("bank_transfer")}><Building2 size={14} /> Transfer</Button>
         </div>
       </div>
 
       {/* Totals */}
-      <div className="bg-zinc-50 rounded-xl p-3 space-y-1">
+      <div className="bg-muted rounded-xl p-3 space-y-1">
         <div className="flex justify-between text-sm">
           <span>Subtotal</span>
           <span>{formatCurrency(cart.subtotal)}</span>

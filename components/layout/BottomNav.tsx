@@ -32,8 +32,8 @@ export function BottomNav() {
   const items = NAV_ITEMS;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white shadow-[0_-1px_4px_rgba(0,0,0,0.08)] safe-area-inset-bottom">
-      <div className="flex overflow-x-auto scrollbar-hide">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border safe-area-inset-bottom">
+      <div className="flex overflow-x-auto scrollbar-hide px-1 py-1">
         {items.map((item) => {
           const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
           const Icon = item.icon;
@@ -42,15 +42,14 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center min-w-[64px] py-2 px-1 text-xs gap-1 flex-shrink-0 relative",
-                active ? "text-red-700" : "text-zinc-400"
+                "flex flex-col items-center justify-center min-w-[60px] py-1.5 px-2 text-[10px] gap-0.5 flex-shrink-0 rounded-xl transition-colors",
+                active
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {active && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-red-700 rounded-full" />
-              )}
-              <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-              <span className="leading-none font-medium">{item.label}</span>
+              <Icon size={19} strokeWidth={active ? 2.2 : 1.8} />
+              <span className="leading-none">{item.label}</span>
             </Link>
           );
         })}

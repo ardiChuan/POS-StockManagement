@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { getDeviceFromCookies, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies } from "@/lib/auth";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,14 +10,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const { id } = await params;
     const { data, error } = await supabase
       .from("sales")
-      .select("*, customer:customers(*), device:devices(id,name,role), items:sale_items(*)")
+      .select("*, customer:customers(*), device:devices(id,name), items:sale_items(*)")
       .eq("id", id)
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 404 });
     return NextResponse.json(data);
   } catch (err) {
-    if (err instanceof AuthError) return NextResponse.json({ error: err.message }, { status: err.status });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

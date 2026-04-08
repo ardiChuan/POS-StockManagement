@@ -81,7 +81,7 @@ export default function ProductsPage() {
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="font-bold text-xl">Products</h1>
+        <h1 className="font-bold text-2xl tracking-tight">Products</h1>
         <div className="flex gap-2">
           <Button size="sm" onClick={() => setAdjustOpen(true)}>Adjust Stock</Button>
           <Sheet open={adjustOpen} onOpenChange={setAdjustOpen}>
@@ -187,7 +187,7 @@ export default function ProductsPage() {
               ? p.variants.reduce((s, v) => s + v.stock_qty, 0)
               : (p.stock_qty ?? 0);
             return (
-              <div key={p.id} className="bg-white border rounded-xl p-3">
+              <div key={p.id} className="bg-card border rounded-xl p-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-sm">{p.name}</p>
                   {p.is_fish && <Badge variant="outline" className="text-[10px]">Fish</Badge>}

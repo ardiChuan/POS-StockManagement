@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { getDeviceFromCookies, AuthError } from "@/lib/auth";
+import { getDeviceFromCookies } from "@/lib/auth";
 import type { CreateSaleRequest, DiscountType, PaymentMethod } from "@/types";
 
 // GET /api/sales — admin + owner only
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabase
       .from("sales")
-      .select("*, customer:customers(*), device:devices(id,name,role), items:sale_items(*)", { count: "exact" })
+      .select("*, customer:customers(*), device:devices(id,name), items:sale_items(*)", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -27,7 +27,6 @@ export async function GET(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ data, count });
   } catch (err) {
-    if (err instanceof AuthError) return NextResponse.json({ error: err.message }, { status: err.status });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

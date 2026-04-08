@@ -60,7 +60,7 @@ export default function EodPage() {
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
-      <h1 className="font-bold text-xl">Cash Count (EOD)</h1>
+      <h1 className="font-bold text-2xl tracking-tight">Cash Count (EOD)</h1>
 
       <Card>
         <CardHeader className="pb-2">
@@ -101,7 +101,7 @@ export default function EodPage() {
       </Card>
 
       {!data.is_closed && (
-        <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-4 space-y-3">
+        <form onSubmit={handleSubmit} className="bg-card border rounded-xl p-4 space-y-3">
           <p className="font-semibold text-sm">Submit Cash Count</p>
           <div className="space-y-1">
             <Label>Physical Cash Count (Rp) *</Label>
@@ -114,7 +114,7 @@ export default function EodPage() {
             />
           </div>
           {actualCash && (
-            <div className="text-sm bg-zinc-50 rounded-lg p-2">
+            <div className="text-sm bg-muted/50 rounded-lg p-2">
               <div className="flex justify-between">
                 <span>Expected</span>
                 <span>{formatCurrency(data.expected_cash)}</span>

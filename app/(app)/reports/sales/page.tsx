@@ -30,7 +30,7 @@ export default function ReportsSalesPage() {
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
-      <h1 className="font-bold text-xl">Sales Report</h1>
+      <h1 className="font-bold text-2xl tracking-tight">Sales Report</h1>
 
       <div className="flex gap-2 items-end">
         <div className="flex-1 space-y-1">
