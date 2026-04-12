@@ -14,6 +14,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // If variants now exist, clear product-level price/stock_qty
+    const { data: product } = await supabase
+      .from("products")
+      .select("name")
+      .eq("id", product_id)
+      .single();
+
     await supabase
       .from("products")
       .update({ price: null, stock_qty: null, updated_at: new Date().toISOString() })
@@ -23,6 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .from("product_variants")
       .insert({
         product_id,
+        product_name: product?.name ?? null,
         size_label: size_label.trim(),
         price,
         stock_qty: stock_qty ?? 0,

@@ -17,7 +17,6 @@ CREATE TABLE IF NOT EXISTS store_config (
 CREATE TABLE IF NOT EXISTS devices (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name             text NOT NULL,
-  role             text NOT NULL CHECK (role IN ('owner', 'admin', 'cashier')),
   device_token     text NOT NULL UNIQUE,
   is_active        boolean NOT NULL DEFAULT true,
   registered_at    timestamptz NOT NULL DEFAULT now(),
@@ -54,6 +53,7 @@ CREATE INDEX IF NOT EXISTS idx_products_stock ON products (stock_qty);
 CREATE TABLE IF NOT EXISTS product_variants (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   product_id            uuid NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+  product_name          text,
   size_label            text NOT NULL,
   price                 numeric(12, 2) NOT NULL,
   stock_qty             numeric(12, 3) NOT NULL DEFAULT 0,

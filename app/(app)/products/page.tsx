@@ -114,8 +114,8 @@ export default function ProductsPage() {
   }
 
   function getStockBadge(stock: number, threshold: number) {
-    if (stock === 0) return <Badge variant="destructive" className="text-[10px]">Out</Badge>;
-    if (stock <= threshold) return <Badge variant="secondary" className="text-[10px]">Low: {stock}</Badge>;
+    if (stock === 0) return <span className="text-xs font-medium text-red-500">{stock}</span>;
+    if (stock <= threshold) return <span className="text-xs font-medium text-amber-500">{stock}</span>;
     return <span className="text-xs text-muted-foreground">{stock}</span>;
   }
 

@@ -41,6 +41,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       .select("*, category:categories(*), variants:product_variants(*)")
       .single();
 
+    // Keep product_name in sync on variants if name changed
+    if (name?.trim()) {
+      await supabase
+        .from("product_variants")
+        .update({ product_name: name.trim() })
+        .eq("product_id", id);
+    }
+
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data);
   } catch (err) {
