@@ -2,11 +2,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency, formatDateTime, todayDateString, cn } from "@/lib/utils";
 
@@ -53,8 +52,7 @@ interface AdjustmentRow {
 
 export default function ReportsPage() {
   const today = todayDateString();
-  const [from, setFrom] = useState(today);
-  const [to, setTo] = useState(today);
+  const [date, setDate] = useState(today);
 
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
@@ -69,13 +67,13 @@ export default function ReportsPage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const fromISO = `${from}T00:00:00.000Z`;
-    const toISO   = `${to}T23:59:59.999Z`;
+    const fromISO = `${date}T00:00:00.000Z`;
+    const toISO   = `${date}T23:59:59.999Z`;
     try {
       const [salesRes, expRes, adjRes] = await Promise.all([
         apiFetch(`/api/sales?from=${fromISO}&to=${toISO}&limit=200`).then(r => r.json()),
-        apiFetch(`/api/reports/expenses?from=${from}&to=${to}`).then(r => r.json()),
-        apiFetch(`/api/stock/adjustments?from=${from}&to=${to}`).then(r => r.json()),
+        apiFetch(`/api/reports/expenses?from=${date}&to=${date}`).then(r => r.json()),
+        apiFetch(`/api/stock/adjustments?from=${date}&to=${date}`).then(r => r.json()),
       ]);
       setSales(salesRes.data ?? []);
       setExpenses(expRes.items ?? []);
@@ -83,9 +81,15 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [from, to]);
+  }, [date]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  function shiftDate(days: number) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    setDate(d.toISOString().split("T")[0]);
+  }
 
   const filteredSales = sales.filter(s => {
     const nameMatch = !salesSearch || (s.customer?.name ?? "").toLowerCase().includes(salesSearch.toLowerCase());
@@ -102,7 +106,7 @@ export default function ReportsPage() {
   );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)]">
+    <div className="flex flex-col h-[calc(100vh-80px)] max-w-lg mx-auto w-full">
       <div className="px-4 pt-4 pb-2">
         <h1 className="font-bold text-2xl tracking-tight">Reports</h1>
       </div>
@@ -116,22 +120,11 @@ export default function ReportsPage() {
           </TabsList>
         </div>
 
-        {/* Shared date filter */}
-        <div className="px-4 pt-3 pb-2">
-          <div className="flex gap-2 items-end">
-            <div className="flex-1 space-y-1">
-              <Label className="text-xs">From</Label>
-              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} />
-            </div>
-            <div className="flex-1 space-y-1">
-              <Label className="text-xs">To</Label>
-              <Input type="date" value={to} onChange={e => setTo(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs invisible">Go</Label>
-              <Button size="sm" onClick={loadAll} disabled={loading}>Go</Button>
-            </div>
-          </div>
+        {/* Date picker */}
+        <div className="px-4 pt-3 pb-2 flex items-center gap-2">
+          <Button size="icon" variant="outline" onClick={() => shiftDate(-1)}><ChevronLeft size={16} /></Button>
+          <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="flex-1 text-center" />
+          <Button size="icon" variant="outline" onClick={() => shiftDate(1)} disabled={date >= today}><ChevronRight size={16} /></Button>
         </div>
 
         {/* Sales tab */}
@@ -265,7 +258,7 @@ function SaleCard({ sale, expanded, onToggle }: {
               {sale.payment_method === "cash" ? "Cash" : "Transfer"}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground font-mono">{sale.sale_number}</p>
+          <p className="text-xs text-muted-foreground">{formatDateTime(sale.created_at)}</p>
         </div>
         <p className="font-bold text-sm flex-shrink-0">{formatCurrency(Number(sale.total))}</p>
         {expanded
@@ -276,8 +269,6 @@ function SaleCard({ sale, expanded, onToggle }: {
 
       {expanded && (
         <div className="border-t px-3 pb-3 pt-2 space-y-1.5 bg-muted/30">
-          <p className="text-xs text-muted-foreground mb-2">{formatDateTime(sale.created_at)}</p>
-
           {sale.items.map(item => (
             <div key={item.id} className="flex justify-between text-sm">
               <span className="flex-1 truncate text-muted-foreground">

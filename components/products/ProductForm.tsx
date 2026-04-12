@@ -26,6 +26,7 @@ export function ProductForm({ product }: ProductFormProps) {
   const [showCatSuggestions, setShowCatSuggestions] = useState(false);
   const [price, setPrice] = useState(product?.price?.toString() ?? "");
   const [stockQty, setStockQty] = useState(product?.stock_qty?.toString() ?? "");
+  const [trackStock, setTrackStock] = useState(product?.track_stock ?? true);
   const [lowStockThreshold, setLowStockThreshold] = useState(product?.low_stock_threshold?.toString() ?? "5");
   const [variants, setVariants] = useState<(Partial<ProductVariant> & { tempId: string })[]>(
     (product?.variants ?? []).map((v) => ({ ...v, tempId: v.id }))
@@ -91,8 +92,9 @@ export function ProductForm({ product }: ProductFormProps) {
           name: name.trim(),
           category_id: categoryId,
           is_fish: isFish,
+          track_stock: trackStock,
           price: hasVariants ? null : (price ? Number(price) : null),
-          stock_qty: hasVariants ? null : (stockQty ? Number(stockQty) : null),
+          stock_qty: hasVariants ? null : (trackStock ? (stockQty ? Number(stockQty) : null) : null),
           low_stock_threshold: Number(lowStockThreshold) || 5,
         }),
       });
@@ -180,6 +182,13 @@ export function ProductForm({ product }: ProductFormProps) {
         <Label htmlFor="is_fish">This is a fish product (stock-based)</Label>
       </div>
 
+      {/* Track stock toggle */}
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id="track_stock" checked={trackStock} onChange={(e) => setTrackStock(e.target.checked)} className="h-4 w-4" />
+        <Label htmlFor="track_stock">Track stock quantity</Label>
+        {!trackStock && <span className="text-xs text-muted-foreground">Stock won&apos;t be counted or enforced</span>}
+      </div>
+
       <Separator />
 
       {/* Variants section */}
@@ -207,16 +216,20 @@ export function ProductForm({ product }: ProductFormProps) {
                 <Input type="number" placeholder="0" value={v.price ?? ""}
                   onChange={(e) => updateVariant(v.tempId!, "price", Number(e.target.value))} />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Stock</Label>
-                <Input type="number" placeholder="0" value={v.stock_qty ?? ""}
-                  onChange={(e) => updateVariant(v.tempId!, "stock_qty", Number(e.target.value))} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Low Stock Alert</Label>
-                <Input type="number" placeholder="5" value={v.low_stock_threshold ?? ""}
-                  onChange={(e) => updateVariant(v.tempId!, "low_stock_threshold", Number(e.target.value))} />
-              </div>
+              {trackStock && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Stock</Label>
+                  <Input type="number" placeholder="0" value={v.stock_qty ?? ""}
+                    onChange={(e) => updateVariant(v.tempId!, "stock_qty", Number(e.target.value))} />
+                </div>
+              )}
+              {trackStock && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Low Stock Alert</Label>
+                  <Input type="number" placeholder="5" value={v.low_stock_threshold ?? ""}
+                    onChange={(e) => updateVariant(v.tempId!, "low_stock_threshold", Number(e.target.value))} />
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -230,20 +243,24 @@ export function ProductForm({ product }: ProductFormProps) {
       {!hasVariants && (
         <>
           <Separator />
-          <div className="grid grid-cols-2 gap-3">
+          <div className={trackStock ? "grid grid-cols-2 gap-3" : "space-y-1"}>
             <div className="space-y-1">
               <Label>Price (Rp)</Label>
               <Input type="number" placeholder="0" value={price} onChange={(e) => setPrice(e.target.value)} />
             </div>
+            {trackStock && (
+              <div className="space-y-1">
+                <Label>Stock</Label>
+                <Input type="number" placeholder="0" value={stockQty} onChange={(e) => setStockQty(e.target.value)} />
+              </div>
+            )}
+          </div>
+          {trackStock && (
             <div className="space-y-1">
-              <Label>Stock</Label>
-              <Input type="number" placeholder="0" value={stockQty} onChange={(e) => setStockQty(e.target.value)} />
+              <Label>Low Stock Alert at</Label>
+              <Input type="number" placeholder="5" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} />
             </div>
-          </div>
-          <div className="space-y-1">
-            <Label>Low Stock Alert at</Label>
-            <Input type="number" placeholder="5" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} />
-          </div>
+          )}
         </>
       )}
 

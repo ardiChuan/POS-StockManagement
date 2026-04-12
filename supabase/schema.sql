@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS products (
   price                 numeric(12, 2),
   stock_qty             numeric(12, 3),
   low_stock_threshold   numeric(12, 3) NOT NULL DEFAULT 5,
+  track_stock           boolean NOT NULL DEFAULT true,
   is_active             boolean NOT NULL DEFAULT true,
   created_at            timestamptz NOT NULL DEFAULT now(),
   updated_at            timestamptz NOT NULL DEFAULT now()

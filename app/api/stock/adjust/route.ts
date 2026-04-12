@@ -5,6 +5,7 @@ import { getDeviceFromCookies } from "@/lib/auth";
 export async function POST(req: NextRequest) {
   try {
     const device = await getDeviceFromCookies();
+    if (!device) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { product_id, variant_id, qty_change, note } = await req.json();
     if (!product_id || qty_change == null) {
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
         qty_change,
         qty_after: newQty,
         note: note?.trim() || null,
-        device_id: device!.id,
+        device_id: device.id,
       });
 
       return NextResponse.json({ stock_qty: newQty });
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
         qty_change,
         qty_after: newQty,
         note: note?.trim() || null,
-        device_id: device!.id,
+        device_id: device.id,
       });
 
       return NextResponse.json({ stock_qty: newQty });

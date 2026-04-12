@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const device = await getDeviceFromCookies();
 
     const body = await req.json();
-    const { name, category_id, is_fish, price, stock_qty, low_stock_threshold } = body;
+    const { name, category_id, is_fish, track_stock, price, stock_qty, low_stock_threshold } = body;
 
     if (!name?.trim()) return NextResponse.json({ error: "name required" }, { status: 400 });
 
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
         name: name.trim(),
         category_id: category_id || null,
         is_fish: is_fish ?? false,
+        track_stock: track_stock ?? true,
         price: price ?? null,
         stock_qty: stock_qty ?? null,
         low_stock_threshold: low_stock_threshold ?? 5,

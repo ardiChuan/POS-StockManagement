@@ -5,11 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { useCart } from "@/hooks/useCart";
 import Link from "next/link";
 import type { Product, ProductVariant, StockAdjustment } from "@/types";
 
@@ -17,16 +19,25 @@ type VariantRow = { id: string; size_label: string; price: number; stock_qty: nu
 type ProductRow = Product & { variants: VariantRow[]; category: { name: string } | null };
 
 export default function ProductsPage() {
+  const cart = useCart();
+
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
   const [loading, setLoading] = useState(true);
   const [adjustOpen, setAdjustOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
+  // Stock adjustment state
   const [selectedProductId, setSelectedProductId] = useState("");
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [qtyChange, setQtyChange] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Add-to-cart dialog state
+  const [cartDialog, setCartDialog] = useState<ProductRow | null>(null);
+  const [cartVariant, setCartVariant] = useState<VariantRow | null>(null);
+  const [cartQty, setCartQty] = useState("1");
 
   const loadProducts = useCallback(async () => {
     const res = await apiFetch("/api/products");
@@ -44,6 +55,10 @@ export default function ProductsPage() {
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
   const hasVariants = (selectedProduct?.variants?.length ?? 0) > 0;
+
+  const filteredProducts = products.filter((p) =>
+    !search || p.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   async function handleAdjust(e: React.FormEvent) {
     e.preventDefault();
@@ -72,16 +87,46 @@ export default function ProductsPage() {
     }
   }
 
+  function openCartDialog(p: ProductRow) {
+    setCartDialog(p);
+    setCartVariant(null);
+    setCartQty("1");
+  }
+
+  function confirmAddToCart() {
+    if (!cartDialog) return;
+    const qty = parseFloat(cartQty) || 1;
+    const v = cartVariant;
+    cart.addItem({
+      key: v ? `product-${cartDialog.id}-${v.id}` : `product-${cartDialog.id}`,
+      item_type: "product",
+      product_id: cartDialog.id,
+      variant_id: v?.id,
+      category_name: cartDialog.category?.name ?? undefined,
+      description: v ? `${cartDialog.name} (${v.size_label})` : cartDialog.name,
+      unit_price: v ? v.price : (cartDialog.price ?? 0),
+      qty,
+    });
+    toast.success("Added to cart");
+    setCartDialog(null);
+    setCartVariant(null);
+    setCartQty("1");
+  }
+
   function getStockBadge(stock: number, threshold: number) {
     if (stock === 0) return <Badge variant="destructive" className="text-[10px]">Out</Badge>;
     if (stock <= threshold) return <Badge variant="secondary" className="text-[10px]">Low: {stock}</Badge>;
     return <span className="text-xs text-muted-foreground">{stock}</span>;
   }
 
+  const cartDialogHasVariants = (cartDialog?.variants?.length ?? 0) > 0;
+  const showQtyStep = !cartDialogHasVariants || cartVariant !== null;
+
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="font-bold text-2xl tracking-tight">Products</h1>
+        <h1 className="font-bold text-2xl tracking-tight">Stocks</h1>
         <div className="flex gap-2">
           <Button size="sm" onClick={() => setAdjustOpen(true)}>Adjust Stock</Button>
           <Sheet open={adjustOpen} onOpenChange={setAdjustOpen}>
@@ -94,11 +139,9 @@ export default function ProductsPage() {
                   <div className="space-y-1">
                     <Label>Product *</Label>
                     <Select value={selectedProductId} onValueChange={(v) => { setSelectedProductId(v ?? ""); setSelectedVariantId(""); }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select product…" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Select product…" /></SelectTrigger>
                       <SelectContent>
-                        {products.map((p) => (
+                        {products.filter((p) => p.track_stock).map((p) => (
                           <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -109,9 +152,7 @@ export default function ProductsPage() {
                     <div className="space-y-1">
                       <Label>Size / Variant *</Label>
                       <Select value={selectedVariantId} onValueChange={(v) => setSelectedVariantId(v ?? "")}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select variant…" />
-                        </SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Select variant…" /></SelectTrigger>
                         <SelectContent>
                           {selectedProduct?.variants.map((v) => (
                             <SelectItem key={v.id} value={v.id}>
@@ -125,13 +166,8 @@ export default function ProductsPage() {
 
                   <div className="space-y-1">
                     <Label>Quantity Change *</Label>
-                    <Input
-                      type="number"
-                      placeholder="e.g. +10 or -3"
-                      value={qtyChange}
-                      onChange={(e) => setQtyChange(e.target.value)}
-                      required
-                    />
+                    <Input type="number" placeholder="e.g. +10 or -3" value={qtyChange}
+                      onChange={(e) => setQtyChange(e.target.value)} required />
                     <p className="text-xs text-muted-foreground">Positive to add stock, negative to reduce.</p>
                   </div>
 
@@ -140,7 +176,8 @@ export default function ProductsPage() {
                     <Input placeholder="Reason for adjustment…" value={note} onChange={(e) => setNote(e.target.value)} />
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={saving || !selectedProductId || (hasVariants && !selectedVariantId)}>
+                  <Button type="submit" className="w-full"
+                    disabled={saving || !selectedProductId || (hasVariants && !selectedVariantId)}>
                     {saving ? "Saving…" : "Apply Adjustment"}
                   </Button>
                 </form>
@@ -177,48 +214,152 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {/* Search */}
+      <Input
+        placeholder="Search products…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
+      {/* Product list */}
       {loading ? (
         <p className="text-center text-muted-foreground py-8">Loading…</p>
       ) : (
         <div className="space-y-2">
-          {products.map((p) => {
+          {filteredProducts.map((p) => {
             const pHasVariants = (p.variants?.length ?? 0) > 0;
             const totalStock = pHasVariants
               ? p.variants.reduce((s, v) => s + v.stock_qty, 0)
               : (p.stock_qty ?? 0);
+            const isOutOfStock = p.track_stock && (
+              pHasVariants
+                ? p.variants.every((v) => v.stock_qty === 0)
+                : totalStock === 0
+            );
             return (
               <div key={p.id} className="bg-card border rounded-xl p-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold text-sm">{p.name}</p>
-                  {p.is_fish && <Badge variant="outline" className="text-[10px]">Fish</Badge>}
-                  {p.category?.name && (
-                    <Badge variant="secondary" className="text-[10px]">{p.category.name}</Badge>
-                  )}
-                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-sm">{p.name}</p>
+                      {p.is_fish && <Badge variant="outline" className="text-[10px]">Fish</Badge>}
+                      {p.category?.name && (
+                        <Badge variant="secondary" className="text-[10px]">{p.category.name}</Badge>
+                      )}
+                    </div>
 
-                {pHasVariants ? (
-                  <div className="mt-1 space-y-0.5">
-                    {p.variants.map((v) => (
-                      <div key={v.id} className="flex justify-between text-xs text-muted-foreground">
-                        <span>{v.size_label} · {formatCurrency(v.price)}</span>
-                        {getStockBadge(v.stock_qty, v.low_stock_threshold)}
+                    {!p.track_stock ? (
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-sm font-medium">{pHasVariants ? `${p.variants.length} sizes` : formatCurrency(p.price ?? 0)}</p>
+                        <Badge variant="outline" className="text-[10px]">Untracked</Badge>
                       </div>
-                    ))}
+                    ) : pHasVariants ? (
+                      <div className="mt-1 space-y-0.5">
+                        {p.variants.map((v) => (
+                          <div key={v.id} className="flex justify-between text-xs text-muted-foreground">
+                            <span>{v.size_label} · {formatCurrency(v.price)}</span>
+                            {getStockBadge(v.stock_qty, v.low_stock_threshold)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-sm font-medium">{formatCurrency(p.price ?? 0)}</p>
+                        {getStockBadge(totalStock, p.low_stock_threshold)}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <p className="text-sm font-medium">{formatCurrency(p.price ?? 0)}</p>
-                    {getStockBadge(totalStock, p.low_stock_threshold)}
-                  </div>
-                )}
+
+                  {/* Add to cart button */}
+                  <Button
+                    size="sm"
+                    variant={isOutOfStock ? "outline" : "default"}
+                    disabled={isOutOfStock}
+                    onClick={() => openCartDialog(p)}
+                    className="flex-shrink-0"
+                  >
+                    {isOutOfStock ? "Out" : "+ Cart"}
+                  </Button>
+
+                </div>
               </div>
             );
           })}
-          {products.length === 0 && (
-            <p className="text-center text-muted-foreground py-8">No products yet</p>
+          {filteredProducts.length === 0 && (
+            <p className="text-center text-muted-foreground py-8">
+              {search ? "No products match your search" : "No products yet"}
+            </p>
           )}
         </div>
       )}
+
+      {/* Add to Cart Dialog */}
+      <Dialog open={!!cartDialog} onOpenChange={(open) => { if (!open) { setCartDialog(null); setCartVariant(null); setCartQty("1"); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {cartDialog?.name}
+              {cartVariant && <span className="text-muted-foreground font-normal"> — {cartVariant.size_label}</span>}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Step 1: Variant selection */}
+          {cartDialogHasVariants && !cartVariant && (
+            <div className="space-y-2 mt-2">
+              <p className="text-sm text-muted-foreground">Select size:</p>
+              {cartDialog?.variants.map((v) => {
+                const outOfStock = cartDialog.track_stock && v.stock_qty === 0;
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => setCartVariant(v)}
+                    disabled={outOfStock}
+                    className="w-full flex justify-between items-center p-3 border rounded-xl text-left disabled:opacity-50 hover:bg-muted/50 transition-colors cursor-pointer"
+                  >
+                    <span className="font-medium">{v.size_label}</span>
+                    <span className="text-right">
+                      <span className="font-bold">{formatCurrency(v.price)}</span>
+                      {cartDialog.track_stock && <span className="text-xs text-muted-foreground ml-2">stock: {v.stock_qty}</span>}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Step 2: Qty input */}
+          {showQtyStep && (
+            <div className="space-y-4 mt-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Price</span>
+                <span className="font-bold">
+                  {formatCurrency(cartVariant ? cartVariant.price : (cartDialog?.price ?? 0))}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <Label>Quantity</Label>
+                <div className="flex items-center gap-2">
+                  <Button type="button" size="icon" variant="outline"
+                    onClick={() => setCartQty((q) => String(Math.max(0.1, parseFloat(q) - 1)))}>−</Button>
+                  <Input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={cartQty}
+                    onChange={(e) => setCartQty(e.target.value)}
+                    className="text-center"
+                  />
+                  <Button type="button" size="icon" variant="outline"
+                    onClick={() => setCartQty((q) => String(parseFloat(q) + 1))}>+</Button>
+                </div>
+              </div>
+              <Button className="w-full" onClick={confirmAddToCart}>
+                Add to Cart · {formatCurrency((cartVariant ? cartVariant.price : (cartDialog?.price ?? 0)) * (parseFloat(cartQty) || 1))}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

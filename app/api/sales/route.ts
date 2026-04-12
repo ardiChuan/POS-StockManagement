@@ -3,10 +3,11 @@ import { supabase } from "@/lib/supabase/server";
 import { getDeviceFromCookies } from "@/lib/auth";
 import type { CreateSaleRequest, DiscountType, PaymentMethod } from "@/types";
 
-// GET /api/sales — admin + owner only
+// GET /api/sales
 export async function GET(req: NextRequest) {
   try {
     const device = await getDeviceFromCookies();
+    if (!device) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
     const from = searchParams.get("from");
@@ -67,9 +68,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── 3. Validate product/variant stock ────────────────────────────────────
+    // ── 3. Validate product/variant stock (skip untracked) ─────────────────
     const productItems = items.filter((i) => i.item_type === "product");
     for (const pi of productItems) {
+      const { data: prod } = await supabase
+        .from("products")
+        .select("track_stock, stock_qty")
+        .eq("id", pi.product_id!)
+        .single();
+      if (!prod) {
+        return NextResponse.json({ error: `Product not found for ${pi.description}` }, { status: 404 });
+      }
+      if (!prod.track_stock) continue;
+
       if (pi.variant_id) {
         const { data: variant } = await supabase
           .from("product_variants")
@@ -80,12 +91,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: `Insufficient stock for ${pi.description}` }, { status: 409 });
         }
       } else {
-        const { data: product } = await supabase
-          .from("products")
-          .select("stock_qty")
-          .eq("id", pi.product_id!)
-          .single();
-        if (!product || (product.stock_qty ?? 0) < pi.qty) {
+        if ((prod.stock_qty ?? 0) < pi.qty) {
           return NextResponse.json({ error: `Insufficient stock for ${pi.description}` }, { status: 409 });
         }
       }
@@ -183,9 +189,17 @@ async function processSaleItems(sale: { id: string; payment_method: string }, it
       .eq("id", fi.fish_id!);
   }
 
-  // ── 9. Deduct product/variant stock + log adjustments ────────────────────
+  // ── 9. Deduct product/variant stock + log adjustments (skip untracked) ─
   const productItems = items.filter((i) => i.item_type === "product");
   for (const pi of productItems) {
+    // Check if product tracks stock
+    const { data: prodCheck } = await supabase
+      .from("products")
+      .select("track_stock")
+      .eq("id", pi.product_id!)
+      .single();
+    if (!prodCheck?.track_stock) continue;
+
     if (pi.variant_id) {
       const { data: variant } = await supabase
         .from("product_variants")

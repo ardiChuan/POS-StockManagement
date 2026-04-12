@@ -5,7 +5,7 @@ import { formatCurrency } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 type VariantRow = { id: string; size_label: string; price: number; stock_qty: number; low_stock_threshold: number };
-type ProductRow = { id: string; name: string; is_fish: boolean; price: number | null; stock_qty: number | null; low_stock_threshold: number; variants: VariantRow[] };
+type ProductRow = { id: string; name: string; is_fish: boolean; track_stock: boolean; price: number | null; stock_qty: number | null; low_stock_threshold: number; variants: VariantRow[] };
 type FishRow = { id: string };
 
 export default async function ReportsInventoryPage() {
@@ -23,12 +23,13 @@ export default async function ReportsInventoryPage() {
         key: v.id,
         name: `${p.name} (${v.size_label})`,
         is_fish: p.is_fish,
+        track_stock: p.track_stock,
         price: v.price,
         stock: v.stock_qty,
         threshold: v.low_stock_threshold,
       }));
     }
-    return [{ key: p.id, name: p.name, is_fish: p.is_fish, price: p.price ?? 0, stock: p.stock_qty ?? 0, threshold: p.low_stock_threshold }];
+    return [{ key: p.id, name: p.name, is_fish: p.is_fish, track_stock: p.track_stock, price: p.price ?? 0, stock: p.stock_qty ?? 0, threshold: p.low_stock_threshold }];
   });
 
   return (
@@ -48,11 +49,15 @@ export default async function ReportsInventoryPage() {
               <p className="text-xs text-muted-foreground">{formatCurrency(row.price)}</p>
             </div>
             <div className="ml-2 text-right flex-shrink-0">
-              <Badge
-                variant={row.stock === 0 ? "destructive" : row.stock <= row.threshold ? "secondary" : "outline"}
-              >
-                {row.stock === 0 ? "Out of stock" : `${row.stock}`}
-              </Badge>
+              {!row.track_stock ? (
+                <Badge variant="outline">Untracked</Badge>
+              ) : (
+                <Badge
+                  variant={row.stock === 0 ? "destructive" : row.stock <= row.threshold ? "secondary" : "outline"}
+                >
+                  {row.stock === 0 ? "Out of stock" : `${row.stock}`}
+                </Badge>
+              )}
             </div>
           </div>
         ))}

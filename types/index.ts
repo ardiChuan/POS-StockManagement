@@ -43,6 +43,7 @@ export interface Product {
   price: number | null;       // null when variants exist
   stock_qty: number | null;   // null when variants exist
   low_stock_threshold: number;
+  track_stock: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -135,6 +136,7 @@ export interface CartItem {
   fish_id?: string;
   product_id?: string;
   variant_id?: string;
+  category_name?: string;
   description: string;
   unit_price: number;
   qty: number;

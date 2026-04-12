@@ -5,6 +5,7 @@ import { uploadFishPhoto } from "@/lib/supabase/storage";
 export async function POST(req: NextRequest) {
   try {
     const device = await getDeviceFromCookies();
+    if (!device) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
