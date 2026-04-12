@@ -134,9 +134,9 @@ export default function ProductsPage() {
   }
 
   function getStockBadge(stock: number, threshold: number) {
-    if (stock === 0) return <span className="text-xs font-medium text-red-500">{stock}</span>;
-    if (stock <= threshold) return <span className="text-xs font-medium text-amber-500">{stock}</span>;
-    return <span className="text-xs text-muted-foreground">{stock}</span>;
+    if (stock === 0) return <span className="text-xs font-medium text-red-500">{stock} Pcs</span>;
+    if (stock <= threshold) return <span className="text-xs font-medium text-amber-500">{stock} Pcs</span>;
+    return <span className="text-xs text-muted-foreground">{stock} Pcs</span>;
   }
 
   const cartDialogHasRealVariants = cartDialog ? hasRealVariants(cartDialog) : false;
@@ -254,26 +254,27 @@ export default function ProductsPage() {
             return (
               <div key={p.id} className="bg-card border rounded-xl p-3">
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap flex-1">
                       <p className="font-semibold text-sm">{p.name}</p>
                       {p.is_fish && <Badge variant="outline" className="text-[10px]">Fish</Badge>}
                     </div>
 
                     {realVariants ? (
-                      <div className="mt-1 space-y-0.5">
+                      <div className="mt-1 space-y-0.5 pr-3 flex flex-col items-end">
                         {p.variants.filter((v) => v.size_label !== "").map((v) => (
-                          <div key={v.id} className="flex justify-between text-xs text-muted-foreground">
-                            <span className="flex gap-4"><span className="w-20 truncate">{v.size_label}</span><span>{formatCurrency(v.price)}</span></span>
-                            {p.track_stock && getStockBadge(v.stock_qty, v.low_stock_threshold)}
+                          <div key={v.id} className="flex justify-end gap-3 text-xs text-muted-foreground">
+                            <span>{v.size_label}</span>
+                            <span>{formatCurrency(v.price)}</span>
+                            <span className="w-12 text-right">{p.track_stock ? getStockBadge(v.stock_qty, v.low_stock_threshold) : null}</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="mt-1 space-y-0.5">
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span className="flex gap-4"><span className="w-20 truncate">-</span><span>{formatCurrency(defVariant?.price ?? 0)}</span></span>
-                          {p.track_stock && defVariant && getStockBadge(defVariant.stock_qty, defVariant.low_stock_threshold)}
+                      <div className="mt-1 space-y-0.5 pr-3 flex flex-col items-end">
+                        <div className="flex justify-end gap-3 text-xs text-muted-foreground">
+                          <span>{formatCurrency(defVariant?.price ?? 0)}</span>
+                          <span className="w-12 text-right">{p.track_stock && defVariant ? getStockBadge(defVariant.stock_qty, defVariant.low_stock_threshold) : null}</span>
                         </div>
                       </div>
                     )}
