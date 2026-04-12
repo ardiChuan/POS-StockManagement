@@ -263,25 +263,19 @@ export default function ProductsPage() {
                       )}
                     </div>
 
-                    {!p.track_stock ? (
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-sm font-medium">
-                          {realVariants ? `${p.variants.filter((v) => v.size_label !== "").length} sizes` : formatCurrency(defVariant?.price ?? 0)}
-                        </p>
-                      </div>
-                    ) : realVariants ? (
+                    {realVariants ? (
                       <div className="mt-1 space-y-0.5">
                         {p.variants.filter((v) => v.size_label !== "").map((v) => (
                           <div key={v.id} className="flex justify-between text-xs text-muted-foreground">
                             <span>{v.size_label} · {formatCurrency(v.price)}</span>
-                            {getStockBadge(v.stock_qty, v.low_stock_threshold)}
+                            {p.track_stock && getStockBadge(v.stock_qty, v.low_stock_threshold)}
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className="text-sm font-medium">{formatCurrency(defVariant?.price ?? 0)}</p>
-                        {defVariant && getStockBadge(defVariant.stock_qty, defVariant.low_stock_threshold)}
+                        {p.track_stock && defVariant && getStockBadge(defVariant.stock_qty, defVariant.low_stock_threshold)}
                       </div>
                     )}
                   </div>
