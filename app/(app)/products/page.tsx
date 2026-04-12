@@ -268,7 +268,6 @@ export default function ProductsPage() {
                         <p className="text-sm font-medium">
                           {realVariants ? `${p.variants.filter((v) => v.size_label !== "").length} sizes` : formatCurrency(defVariant?.price ?? 0)}
                         </p>
-                        <Badge variant="outline" className="text-[10px]">Untracked</Badge>
                       </div>
                     ) : realVariants ? (
                       <div className="mt-1 space-y-0.5">
