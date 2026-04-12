@@ -258,9 +258,6 @@ export default function ProductsPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-sm">{p.name}</p>
                       {p.is_fish && <Badge variant="outline" className="text-[10px]">Fish</Badge>}
-                      {p.category?.name && (
-                        <Badge variant="secondary" className="text-[10px]">{p.category.name}</Badge>
-                      )}
                     </div>
 
                     {realVariants ? (
