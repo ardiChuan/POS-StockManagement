@@ -5,7 +5,7 @@ import { formatCurrency } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 type VariantRow = { id: string; size_label: string; price: number; stock_qty: number; low_stock_threshold: number };
-type ProductRow = { id: string; name: string; is_fish: boolean; track_stock: boolean; price: number | null; stock_qty: number | null; low_stock_threshold: number; variants: VariantRow[] };
+type ProductRow = { id: string; name: string; is_fish: boolean; track_stock: boolean; variants: VariantRow[] };
 type FishRow = { id: string };
 
 export default async function ReportsInventoryPage() {
@@ -16,21 +16,17 @@ export default async function ReportsInventoryPage() {
   const products = rawProducts as ProductRow[] | null;
   const fish = rawFish as FishRow[] | null;
 
-  const rows = (products ?? []).flatMap((p) => {
-    const variants = p.variants ?? [];
-    if (variants.length > 0) {
-      return variants.map((v: { id: string; size_label: string; price: number; stock_qty: number; low_stock_threshold: number }) => ({
-        key: v.id,
-        name: `${p.name} (${v.size_label})`,
-        is_fish: p.is_fish,
-        track_stock: p.track_stock,
-        price: v.price,
-        stock: v.stock_qty,
-        threshold: v.low_stock_threshold,
-      }));
-    }
-    return [{ key: p.id, name: p.name, is_fish: p.is_fish, track_stock: p.track_stock, price: p.price ?? 0, stock: p.stock_qty ?? 0, threshold: p.low_stock_threshold }];
-  });
+  const rows = (products ?? []).flatMap((p) =>
+    (p.variants ?? []).map((v) => ({
+      key: v.id,
+      name: v.size_label ? `${p.name} (${v.size_label})` : p.name,
+      is_fish: p.is_fish,
+      track_stock: p.track_stock,
+      price: v.price,
+      stock: v.stock_qty,
+      threshold: v.low_stock_threshold,
+    }))
+  );
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">

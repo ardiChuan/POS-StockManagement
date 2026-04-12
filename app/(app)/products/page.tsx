@@ -18,6 +18,9 @@ import type { Product, ProductVariant, StockAdjustment } from "@/types";
 type VariantRow = { id: string; size_label: string; price: number; stock_qty: number; low_stock_threshold: number };
 type ProductRow = Product & { variants: VariantRow[]; category: { name: string } | null };
 
+function isDefaultVariant(v: VariantRow) { return v.size_label === ""; }
+function hasRealVariants(p: ProductRow) { return p.variants.some((v) => v.size_label !== ""); }
+
 export default function ProductsPage() {
   const cart = useCart();
 
@@ -54,7 +57,17 @@ export default function ProductsPage() {
   useEffect(() => { if (adjustOpen) loadAdjustments(); }, [adjustOpen, loadAdjustments]);
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
-  const hasVariants = (selectedProduct?.variants?.length ?? 0) > 0;
+  const selectedHasRealVariants = selectedProduct ? hasRealVariants(selectedProduct) : false;
+
+  // Auto-select default variant for single products in stock adjustment
+  useEffect(() => {
+    if (selectedProduct && !selectedHasRealVariants) {
+      const def = selectedProduct.variants.find(isDefaultVariant);
+      if (def) setSelectedVariantId(def.id);
+    } else if (selectedProduct && selectedHasRealVariants) {
+      setSelectedVariantId("");
+    }
+  }, [selectedProductId, selectedProduct, selectedHasRealVariants]);
 
   const filteredProducts = products.filter((p) =>
     !search || p.name.toLowerCase().includes(search.toLowerCase())
@@ -62,7 +75,7 @@ export default function ProductsPage() {
 
   async function handleAdjust(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedProductId || !qtyChange) return;
+    if (!selectedProductId || !selectedVariantId || !qtyChange) return;
     setSaving(true);
     try {
       const res = await apiFetch("/api/stock/adjust", {
@@ -70,7 +83,7 @@ export default function ProductsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           product_id: selectedProductId,
-          variant_id: selectedVariantId || null,
+          variant_id: selectedVariantId,
           qty_change: Number(qtyChange),
           note: note.trim() || null,
         }),
@@ -89,22 +102,29 @@ export default function ProductsPage() {
 
   function openCartDialog(p: ProductRow) {
     setCartDialog(p);
-    setCartVariant(null);
+    // For single products (default variant), auto-select it
+    if (!hasRealVariants(p)) {
+      const def = p.variants.find(isDefaultVariant);
+      setCartVariant(def ?? null);
+    } else {
+      setCartVariant(null);
+    }
     setCartQty("1");
   }
 
   function confirmAddToCart() {
-    if (!cartDialog) return;
+    if (!cartDialog || !cartVariant) return;
     const qty = parseFloat(cartQty) || 1;
-    const v = cartVariant;
     cart.addItem({
-      key: v ? `product-${cartDialog.id}-${v.id}` : `product-${cartDialog.id}`,
+      key: `product-${cartDialog.id}-${cartVariant.id}`,
       item_type: "product",
       product_id: cartDialog.id,
-      variant_id: v?.id,
+      variant_id: cartVariant.id,
       category_name: cartDialog.category?.name ?? undefined,
-      description: v ? `${cartDialog.name} (${v.size_label})` : cartDialog.name,
-      unit_price: v ? v.price : (cartDialog.price ?? 0),
+      description: cartVariant.size_label
+        ? `${cartDialog.name} (${cartVariant.size_label})`
+        : cartDialog.name,
+      unit_price: cartVariant.price,
       qty,
     });
     toast.success("Added to cart");
@@ -119,8 +139,8 @@ export default function ProductsPage() {
     return <span className="text-xs text-muted-foreground">{stock}</span>;
   }
 
-  const cartDialogHasVariants = (cartDialog?.variants?.length ?? 0) > 0;
-  const showQtyStep = !cartDialogHasVariants || cartVariant !== null;
+  const cartDialogHasRealVariants = cartDialog ? hasRealVariants(cartDialog) : false;
+  const showQtyStep = !cartDialogHasRealVariants || cartVariant !== null;
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
@@ -148,13 +168,13 @@ export default function ProductsPage() {
                     </Select>
                   </div>
 
-                  {hasVariants && (
+                  {selectedHasRealVariants && (
                     <div className="space-y-1">
                       <Label>Size / Variant *</Label>
                       <Select value={selectedVariantId} onValueChange={(v) => setSelectedVariantId(v ?? "")}>
                         <SelectTrigger><SelectValue placeholder="Select variant…" /></SelectTrigger>
                         <SelectContent>
-                          {selectedProduct?.variants.map((v) => (
+                          {selectedProduct?.variants.filter((v) => v.size_label !== "").map((v) => (
                             <SelectItem key={v.id} value={v.id}>
                               {v.size_label} (stock: {v.stock_qty})
                             </SelectItem>
@@ -177,7 +197,7 @@ export default function ProductsPage() {
                   </div>
 
                   <Button type="submit" className="w-full"
-                    disabled={saving || !selectedProductId || (hasVariants && !selectedVariantId)}>
+                    disabled={saving || !selectedProductId || !selectedVariantId}>
                     {saving ? "Saving…" : "Apply Adjustment"}
                   </Button>
                 </form>
@@ -195,7 +215,7 @@ export default function ProductsPage() {
                         {a.product && (
                           <span className="text-muted-foreground ml-1">
                             {(a.product as { name: string }).name}
-                            {a.variant && ` (${(a.variant as { size_label: string }).size_label})`}
+                            {a.variant && (a.variant as { size_label: string }).size_label && ` (${(a.variant as { size_label: string }).size_label})`}
                           </span>
                         )}
                         {a.note && <p className="text-xs text-muted-foreground mt-0.5">{a.note}</p>}
@@ -227,15 +247,10 @@ export default function ProductsPage() {
       ) : (
         <div className="space-y-2">
           {filteredProducts.map((p) => {
-            const pHasVariants = (p.variants?.length ?? 0) > 0;
-            const totalStock = pHasVariants
-              ? p.variants.reduce((s, v) => s + v.stock_qty, 0)
-              : (p.stock_qty ?? 0);
-            const isOutOfStock = p.track_stock && (
-              pHasVariants
-                ? p.variants.every((v) => v.stock_qty === 0)
-                : totalStock === 0
-            );
+            const realVariants = hasRealVariants(p);
+            const totalStock = p.variants.reduce((s, v) => s + v.stock_qty, 0);
+            const isOutOfStock = p.track_stock && p.variants.every((v) => v.stock_qty === 0);
+            const defVariant = p.variants.find(isDefaultVariant);
             return (
               <div key={p.id} className="bg-card border rounded-xl p-3">
                 <div className="flex items-center gap-2">
@@ -250,12 +265,14 @@ export default function ProductsPage() {
 
                     {!p.track_stock ? (
                       <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-sm font-medium">{pHasVariants ? `${p.variants.length} sizes` : formatCurrency(p.price ?? 0)}</p>
+                        <p className="text-sm font-medium">
+                          {realVariants ? `${p.variants.filter((v) => v.size_label !== "").length} sizes` : formatCurrency(defVariant?.price ?? 0)}
+                        </p>
                         <Badge variant="outline" className="text-[10px]">Untracked</Badge>
                       </div>
-                    ) : pHasVariants ? (
+                    ) : realVariants ? (
                       <div className="mt-1 space-y-0.5">
-                        {p.variants.map((v) => (
+                        {p.variants.filter((v) => v.size_label !== "").map((v) => (
                           <div key={v.id} className="flex justify-between text-xs text-muted-foreground">
                             <span>{v.size_label} · {formatCurrency(v.price)}</span>
                             {getStockBadge(v.stock_qty, v.low_stock_threshold)}
@@ -264,8 +281,8 @@ export default function ProductsPage() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-sm font-medium">{formatCurrency(p.price ?? 0)}</p>
-                        {getStockBadge(totalStock, p.low_stock_threshold)}
+                        <p className="text-sm font-medium">{formatCurrency(defVariant?.price ?? 0)}</p>
+                        {defVariant && getStockBadge(defVariant.stock_qty, defVariant.low_stock_threshold)}
                       </div>
                     )}
                   </div>
@@ -299,15 +316,15 @@ export default function ProductsPage() {
           <DialogHeader>
             <DialogTitle>
               {cartDialog?.name}
-              {cartVariant && <span className="text-muted-foreground font-normal"> — {cartVariant.size_label}</span>}
+              {cartVariant && cartVariant.size_label && <span className="text-muted-foreground font-normal"> — {cartVariant.size_label}</span>}
             </DialogTitle>
           </DialogHeader>
 
-          {/* Step 1: Variant selection */}
-          {cartDialogHasVariants && !cartVariant && (
+          {/* Step 1: Variant selection (only for products with real variants) */}
+          {cartDialogHasRealVariants && !cartVariant && (
             <div className="space-y-2 mt-2">
               <p className="text-sm text-muted-foreground">Select size:</p>
-              {cartDialog?.variants.map((v) => {
+              {cartDialog?.variants.filter((v) => v.size_label !== "").map((v) => {
                 const outOfStock = cartDialog.track_stock && v.stock_qty === 0;
                 return (
                   <button
@@ -328,13 +345,11 @@ export default function ProductsPage() {
           )}
 
           {/* Step 2: Qty input */}
-          {showQtyStep && (
+          {showQtyStep && cartVariant && (
             <div className="space-y-4 mt-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Price</span>
-                <span className="font-bold">
-                  {formatCurrency(cartVariant ? cartVariant.price : (cartDialog?.price ?? 0))}
-                </span>
+                <span className="font-bold">{formatCurrency(cartVariant.price)}</span>
               </div>
               <div className="space-y-1">
                 <Label>Quantity</Label>
@@ -354,7 +369,7 @@ export default function ProductsPage() {
                 </div>
               </div>
               <Button className="w-full" onClick={confirmAddToCart}>
-                Add to Cart · {formatCurrency((cartVariant ? cartVariant.price : (cartDialog?.price ?? 0)) * (parseFloat(cartQty) || 1))}
+                Add to Cart · {formatCurrency(cartVariant.price * (parseFloat(cartQty) || 1))}
               </Button>
             </div>
           )}

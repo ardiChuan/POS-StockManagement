@@ -13,17 +13,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "size_label and price required" }, { status: 400 });
     }
 
-    // If variants now exist, clear product-level price/stock_qty
     const { data: product } = await supabase
       .from("products")
       .select("name")
       .eq("id", product_id)
       .single();
 
+    // Delete default variant (size_label = '') when adding first real variant
     await supabase
-      .from("products")
-      .update({ price: null, stock_qty: null, updated_at: new Date().toISOString() })
-      .eq("id", product_id);
+      .from("product_variants")
+      .delete()
+      .eq("product_id", product_id)
+      .eq("size_label", "");
 
     const { data, error } = await supabase
       .from("product_variants")

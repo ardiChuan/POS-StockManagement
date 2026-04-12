@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     for (const pi of productItems) {
       const { data: prod } = await supabase
         .from("products")
-        .select("track_stock, stock_qty")
+        .select("track_stock")
         .eq("id", pi.product_id!)
         .single();
       if (!prod) {
@@ -81,19 +81,13 @@ export async function POST(req: NextRequest) {
       }
       if (!prod.track_stock) continue;
 
-      if (pi.variant_id) {
-        const { data: variant } = await supabase
-          .from("product_variants")
-          .select("stock_qty, size_label")
-          .eq("id", pi.variant_id)
-          .single();
-        if (!variant || variant.stock_qty < pi.qty) {
-          return NextResponse.json({ error: `Insufficient stock for ${pi.description}` }, { status: 409 });
-        }
-      } else {
-        if ((prod.stock_qty ?? 0) < pi.qty) {
-          return NextResponse.json({ error: `Insufficient stock for ${pi.description}` }, { status: 409 });
-        }
+      const { data: variant } = await supabase
+        .from("product_variants")
+        .select("stock_qty")
+        .eq("id", pi.variant_id!)
+        .single();
+      if (!variant || variant.stock_qty < pi.qty) {
+        return NextResponse.json({ error: `Insufficient stock for ${pi.description}` }, { status: 409 });
       }
     }
 
@@ -189,10 +183,9 @@ async function processSaleItems(sale: { id: string; payment_method: string }, it
       .eq("id", fi.fish_id!);
   }
 
-  // ── 9. Deduct product/variant stock + log adjustments (skip untracked) ─
+  // ── 9. Deduct variant stock + log adjustments (skip untracked) ──────────
   const productItems = items.filter((i) => i.item_type === "product");
   for (const pi of productItems) {
-    // Check if product tracks stock
     const { data: prodCheck } = await supabase
       .from("products")
       .select("track_stock")
@@ -200,54 +193,28 @@ async function processSaleItems(sale: { id: string; payment_method: string }, it
       .single();
     if (!prodCheck?.track_stock) continue;
 
-    if (pi.variant_id) {
-      const { data: variant } = await supabase
+    const { data: variant } = await supabase
+      .from("product_variants")
+      .select("stock_qty")
+      .eq("id", pi.variant_id!)
+      .single();
+    if (variant) {
+      const newQty = variant.stock_qty - pi.qty;
+      await supabase
         .from("product_variants")
-        .select("stock_qty")
-        .eq("id", pi.variant_id)
-        .single();
-      if (variant) {
-        const newQty = variant.stock_qty - pi.qty;
-        await supabase
-          .from("product_variants")
-          .update({ stock_qty: newQty, updated_at: now })
-          .eq("id", pi.variant_id);
-        await supabase.from("stock_adjustments").insert({
-          product_id: pi.product_id!,
-          variant_id: pi.variant_id,
-          adjustment_type: "sale",
-          qty_before: variant.stock_qty,
-          qty_change: -pi.qty,
-          qty_after: newQty,
-          note: `Sale ${sale.id}`,
-          device_id: deviceId,
-          related_sale_id: sale.id,
-        });
-      }
-    } else {
-      const { data: product } = await supabase
-        .from("products")
-        .select("stock_qty")
-        .eq("id", pi.product_id!)
-        .single();
-      if (product) {
-        const newQty = (product.stock_qty ?? 0) - pi.qty;
-        await supabase
-          .from("products")
-          .update({ stock_qty: newQty, updated_at: now })
-          .eq("id", pi.product_id!);
-        await supabase.from("stock_adjustments").insert({
-          product_id: pi.product_id!,
-          variant_id: null,
-          adjustment_type: "sale",
-          qty_before: product.stock_qty ?? 0,
-          qty_change: -pi.qty,
-          qty_after: newQty,
-          note: `Sale ${sale.id}`,
-          device_id: deviceId,
-          related_sale_id: sale.id,
-        });
-      }
+        .update({ stock_qty: newQty, updated_at: now })
+        .eq("id", pi.variant_id!);
+      await supabase.from("stock_adjustments").insert({
+        product_id: pi.product_id!,
+        variant_id: pi.variant_id!,
+        adjustment_type: "sale",
+        qty_before: variant.stock_qty,
+        qty_change: -pi.qty,
+        qty_after: newQty,
+        note: `Sale ${sale.id}`,
+        device_id: deviceId,
+        related_sale_id: sale.id,
+      });
     }
   }
 

@@ -6,43 +6,32 @@ export async function GET() {
   try {
     const device = await getDeviceFromCookies();
 
-    type VariantRow = { size_label: string; price: number; stock_qty: number; low_stock_threshold: number };
-    type ProductRow = { id: string; name: string; is_fish: boolean; price: number | null; stock_qty: number | null; low_stock_threshold: number; variants: VariantRow[] };
+    type VariantRow = { id: string; size_label: string; price: number; stock_qty: number; low_stock_threshold: number };
+    type ProductRow = { id: string; name: string; is_fish: boolean; track_stock: boolean; variants: VariantRow[] };
 
     const [{ data: rawProducts }, { data: fishAvailable }] = await Promise.all([
       supabase
         .from("products")
-        .select("*, variants:product_variants(*)")
+        .select("id, name, is_fish, track_stock, variants:product_variants(id, size_label, price, stock_qty, low_stock_threshold)")
         .eq("is_active", true)
         .order("name"),
       supabase.from("fish").select("id").eq("status", "available"),
     ]);
     const products = rawProducts as ProductRow[] | null;
 
-    const productRows = (products ?? []).map((p) => {
-      if (p.variants?.length) {
-        return p.variants.map((v: { size_label: string; price: number; stock_qty: number; low_stock_threshold: number }) => ({
-          id: p.id,
-          name: `${p.name} (${v.size_label})`,
-          is_fish: p.is_fish,
-          stock_qty: v.stock_qty,
-          price: v.price,
-          low_stock_threshold: v.low_stock_threshold,
-          is_low_stock: v.stock_qty <= v.low_stock_threshold && v.stock_qty > 0,
-          is_out_of_stock: v.stock_qty === 0,
-        }));
-      }
-      return [{
-        id: p.id,
-        name: p.name,
+    const productRows = (products ?? []).flatMap((p) =>
+      (p.variants ?? []).map((v) => ({
+        id: v.id,
+        name: v.size_label ? `${p.name} (${v.size_label})` : p.name,
         is_fish: p.is_fish,
-        stock_qty: p.stock_qty ?? 0,
-        price: p.price ?? 0,
-        low_stock_threshold: p.low_stock_threshold,
-        is_low_stock: (p.stock_qty ?? 0) <= p.low_stock_threshold && (p.stock_qty ?? 0) > 0,
-        is_out_of_stock: (p.stock_qty ?? 0) === 0,
-      }];
-    }).flat();
+        track_stock: p.track_stock,
+        stock_qty: v.stock_qty,
+        price: v.price,
+        low_stock_threshold: v.low_stock_threshold,
+        is_low_stock: v.stock_qty <= v.low_stock_threshold && v.stock_qty > 0,
+        is_out_of_stock: v.stock_qty === 0,
+      }))
+    );
 
     return NextResponse.json({
       products: productRows,

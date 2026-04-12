@@ -24,12 +24,19 @@ export function ProductForm({ product }: ProductFormProps) {
   const [categoryId, setCategoryId] = useState(product?.category_id ?? null as string | null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCatSuggestions, setShowCatSuggestions] = useState(false);
-  const [price, setPrice] = useState(product?.price?.toString() ?? "");
-  const [stockQty, setStockQty] = useState(product?.stock_qty?.toString() ?? "");
+  // For single products, read price/stock from default variant
+  const defaultVariant = (product?.variants ?? []).find((v) => v.size_label === "");
+  const [price, setPrice] = useState(
+    defaultVariant ? defaultVariant.price.toString() : (product?.price?.toString() ?? "")
+  );
+  const [stockQty, setStockQty] = useState(
+    defaultVariant ? defaultVariant.stock_qty.toString() : (product?.stock_qty?.toString() ?? "")
+  );
   const [trackStock, setTrackStock] = useState(product?.track_stock ?? true);
   const [lowStockThreshold, setLowStockThreshold] = useState(product?.low_stock_threshold?.toString() ?? "5");
+  // Filter out default variant (size_label = '') — those are managed implicitly
   const [variants, setVariants] = useState<(Partial<ProductVariant> & { tempId: string })[]>(
-    (product?.variants ?? []).map((v) => ({ ...v, tempId: v.id }))
+    (product?.variants ?? []).filter((v) => v.size_label !== "").map((v) => ({ ...v, tempId: v.id }))
   );
   const [saving, setSaving] = useState(false);
 
@@ -93,8 +100,9 @@ export function ProductForm({ product }: ProductFormProps) {
           category_id: categoryId,
           is_fish: isFish,
           track_stock: trackStock,
-          price: hasVariants ? null : (price ? Number(price) : null),
-          stock_qty: hasVariants ? null : (trackStock ? (stockQty ? Number(stockQty) : null) : null),
+          // For single products (no user variants), pass price/stock so API can update default variant
+          price: hasVariants ? null : (price ? Number(price) : 0),
+          stock_qty: hasVariants ? null : (trackStock ? (stockQty ? Number(stockQty) : 0) : 0),
           low_stock_threshold: Number(lowStockThreshold) || 5,
         }),
       });
@@ -103,27 +111,30 @@ export function ProductForm({ product }: ProductFormProps) {
 
       const productId = data.id ?? product!.id;
 
-      // Save variants
-      const existingIds = new Set((product?.variants ?? []).map((v) => v.id));
-      for (const v of variants) {
-        const isNew = !existingIds.has(v.id ?? "");
-        if (isNew) {
-          await apiFetch(`/api/products/${productId}/variants`, {
-            method: "POST",
-            body: JSON.stringify({ size_label: v.size_label, price: v.price, stock_qty: v.stock_qty, low_stock_threshold: v.low_stock_threshold }),
-          });
-        } else {
-          await apiFetch(`/api/products/${productId}/variants/${v.id}`, {
-            method: "PUT",
-            body: JSON.stringify({ size_label: v.size_label, price: v.price, stock_qty: v.stock_qty, low_stock_threshold: v.low_stock_threshold }),
-          });
+      // Save user-created variants (only if user added size variants)
+      if (hasVariants) {
+        const existingVariants = (product?.variants ?? []).filter((v) => v.size_label !== "");
+        const existingIds = new Set(existingVariants.map((v) => v.id));
+        for (const v of variants) {
+          const isNew = !existingIds.has(v.id ?? "");
+          if (isNew) {
+            await apiFetch(`/api/products/${productId}/variants`, {
+              method: "POST",
+              body: JSON.stringify({ size_label: v.size_label, price: v.price, stock_qty: v.stock_qty, low_stock_threshold: v.low_stock_threshold }),
+            });
+          } else {
+            await apiFetch(`/api/products/${productId}/variants/${v.id}`, {
+              method: "PUT",
+              body: JSON.stringify({ size_label: v.size_label, price: v.price, stock_qty: v.stock_qty, low_stock_threshold: v.low_stock_threshold }),
+            });
+          }
         }
-      }
 
-      // Delete removed variants
-      const removedIds = (product?.variants ?? []).filter((v) => !variants.find((nv) => nv.id === v.id)).map((v) => v.id);
-      for (const vid of removedIds) {
-        await apiFetch(`/api/products/${productId}/variants/${vid}`, { method: "DELETE" });
+        // Delete removed variants
+        const removedIds = existingVariants.filter((v) => !variants.find((nv) => nv.id === v.id)).map((v) => v.id);
+        for (const vid of removedIds) {
+          await apiFetch(`/api/products/${productId}/variants/${vid}`, { method: "DELETE" });
+        }
       }
 
       toast.success(isEdit ? "Product updated" : "Product added");

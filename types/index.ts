@@ -40,8 +40,8 @@ export interface Product {
   category_id: string | null;
   name: string;
   is_fish: boolean;
-  price: number | null;       // null when variants exist
-  stock_qty: number | null;   // null when variants exist
+  price: number | null;       // always null — price lives on product_variants
+  stock_qty: number | null;   // always null — stock lives on product_variants
   low_stock_threshold: number;
   track_stock: boolean;
   is_active: boolean;

@@ -9,7 +9,6 @@ import { TrendingUp, Wallet, ArrowLeftRight, TrendingDown, AlertTriangle, Packag
 export const dynamic = "force-dynamic";
 
 type CashRegisterRow = { opening_balance: number; discrepancy: number | null };
-type ProductRow = { id: string; name: string; stock_qty: number | null; low_stock_threshold: number };
 type VariantRow = { id: string; size_label: string; stock_qty: number; low_stock_threshold: number; product: { name: string } | null };
 type SaleRow = { id: string; sale_number: string; total: number; payment_method: string; created_at: string; customer: { name: string } | null };
 type TodaySaleRow = { total: number; payment_method: string };
@@ -23,12 +22,11 @@ export default async function DashboardPage() {
   const todayStart = `${today}T00:00:00.000Z`;
   const todayEnd = `${today}T23:59:59.999Z`;
 
-  const [cashRegRes, salesRes, expRes, recentRes, prodRes, varRes] = await Promise.all([
+  const [cashRegRes, salesRes, expRes, recentRes, varRes] = await Promise.all([
     supabase.from("cash_register").select("*").eq("date", today).single(),
     supabase.from("sales").select("total, payment_method").gte("created_at", todayStart).lte("created_at", todayEnd),
     supabase.from("expenses").select("amount").gte("created_at", todayStart).lte("created_at", todayEnd),
     supabase.from("sales").select("id, sale_number, total, payment_method, created_at, customer:customers(name)").order("created_at", { ascending: false }).limit(10),
-    supabase.from("products").select("id, name, stock_qty, low_stock_threshold").eq("is_active", true).limit(100),
     supabase.from("product_variants").select("id, size_label, stock_qty, low_stock_threshold, product:products(id, name)").limit(200),
   ]);
 
@@ -36,17 +34,16 @@ export default async function DashboardPage() {
   const todaySales = salesRes.data as TodaySaleRow[] | null;
   const todayExpenses = expRes.data as ExpenseRow[] | null;
   const recentSales = recentRes.data as SaleRow[] | null;
-  const lowStockProducts = prodRes.data as ProductRow[] | null;
   const lowStockVariants = varRes.data as VariantRow[] | null;
 
-  const lowStockItems = [
-    ...(lowStockProducts ?? []).filter((p) => p.stock_qty !== null && p.stock_qty <= p.low_stock_threshold).map((p) => ({
-      id: p.id, name: p.name, stock_qty: p.stock_qty!, low_stock_threshold: p.low_stock_threshold,
-    })),
-    ...(lowStockVariants ?? []).filter((v) => v.stock_qty <= v.low_stock_threshold).map((v) => ({
-      id: v.id, name: `${v.product?.name ?? "?"} (${v.size_label})`, stock_qty: v.stock_qty, low_stock_threshold: v.low_stock_threshold,
-    })),
-  ];
+  const lowStockItems = (lowStockVariants ?? [])
+    .filter((v) => v.stock_qty <= v.low_stock_threshold)
+    .map((v) => ({
+      id: v.id,
+      name: v.size_label ? `${v.product?.name ?? "?"} (${v.size_label})` : (v.product?.name ?? "?"),
+      stock_qty: v.stock_qty,
+      low_stock_threshold: v.low_stock_threshold,
+    }));
 
   const totalRevenue = todaySales?.reduce((s, r) => s + Number(r.total), 0) ?? 0;
   const cashRevenue = todaySales?.filter((s) => s.payment_method === "cash").reduce((s, r) => s + Number(r.total), 0) ?? 0;

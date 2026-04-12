@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
         category_id: category_id || null,
         is_fish: is_fish ?? false,
         track_stock: track_stock ?? true,
-        price: price ?? null,
-        stock_qty: stock_qty ?? null,
+        price: null,
+        stock_qty: null,
         low_stock_threshold: low_stock_threshold ?? 5,
         updated_at: new Date().toISOString(),
       })
@@ -49,7 +49,25 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json(data, { status: 201 });
+
+    // Auto-create default variant (every product has at least 1 variant)
+    await supabase.from("product_variants").insert({
+      product_id: data.id,
+      product_name: name.trim(),
+      size_label: "",
+      price: price ?? 0,
+      stock_qty: (track_stock ?? true) ? (stock_qty ?? 0) : 0,
+      low_stock_threshold: low_stock_threshold ?? 5,
+    });
+
+    // Re-fetch with variant included
+    const { data: full } = await supabase
+      .from("products")
+      .select("*, category:categories(*), variants:product_variants(*)")
+      .eq("id", data.id)
+      .single();
+
+    return NextResponse.json(full, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }

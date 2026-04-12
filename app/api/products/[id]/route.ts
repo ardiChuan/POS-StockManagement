@@ -32,8 +32,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         category_id: category_id ?? null,
         is_fish: is_fish ?? false,
         track_stock: track_stock ?? true,
-        price: price ?? null,
-        stock_qty: stock_qty ?? null,
         low_stock_threshold: low_stock_threshold ?? 5,
         updated_at: new Date().toISOString(),
       })
@@ -47,6 +45,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         .from("product_variants")
         .update({ product_name: name.trim() })
         .eq("product_id", id);
+    }
+
+    // If product has a single default variant (size_label = ''), update its price/stock
+    const defaultVariant = data?.variants?.find((v: { size_label: string }) => v.size_label === "");
+    if (defaultVariant && data?.variants?.length === 1) {
+      const variantUpdate: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (price != null) variantUpdate.price = price;
+      if (stock_qty != null) variantUpdate.stock_qty = stock_qty;
+      if (low_stock_threshold != null) variantUpdate.low_stock_threshold = low_stock_threshold;
+      await supabase.from("product_variants").update(variantUpdate).eq("id", defaultVariant.id);
     }
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

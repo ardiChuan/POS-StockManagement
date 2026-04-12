@@ -37,17 +37,22 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     const { error } = await supabase.from("product_variants").delete().eq("id", vid);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // If no variants left, restore product-level stock tracking (set to 0)
+    // If no variants left, create default variant so product always has at least 1
     const { data: remaining } = await supabase
       .from("product_variants")
       .select("id")
       .eq("product_id", product_id);
 
     if (!remaining || remaining.length === 0) {
-      await supabase
-        .from("products")
-        .update({ price: 0, stock_qty: 0, updated_at: new Date().toISOString() })
-        .eq("id", product_id);
+      const { data: prod } = await supabase.from("products").select("name, low_stock_threshold").eq("id", product_id).single();
+      await supabase.from("product_variants").insert({
+        product_id,
+        product_name: prod?.name ?? null,
+        size_label: "",
+        price: 0,
+        stock_qty: 0,
+        low_stock_threshold: prod?.low_stock_threshold ?? 5,
+      });
     }
 
     return NextResponse.json({ success: true });
