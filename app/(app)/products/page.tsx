@@ -280,10 +280,11 @@ export default function ProductsPage() {
                   {/* Add to cart button */}
                   <Button
                     size="sm"
-                    variant={isOutOfStock ? "outline" : "default"}
+                    variant={isOutOfStock ? "destructive" : "default"}
                     disabled={isOutOfStock}
                     onClick={() => openCartDialog(p)}
-                    className="flex-shrink-0"
+                    className="flex-shrink-0 disabled:opacity-100"
+                    style={{ minWidth: "3.6rem" }}
                   >
                     {isOutOfStock ? "Out" : "+ Cart"}
                   </Button>
