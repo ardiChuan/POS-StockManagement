@@ -36,7 +36,7 @@ export default async function DashboardPage() {
   const recentSales = recentRes.data as SaleRow[] | null;
   const lowStockVariants = varRes.data as VariantRow[] | null;
 
-  const lowStockItems = (lowStockVariants ?? [])
+  const allAlertItems = (lowStockVariants ?? [])
     .filter((v) => v.stock_qty <= v.low_stock_threshold)
     .map((v) => ({
       id: v.id,
@@ -44,6 +44,8 @@ export default async function DashboardPage() {
       stock_qty: v.stock_qty,
       low_stock_threshold: v.low_stock_threshold,
     }));
+  const outOfStockItems = allAlertItems.filter((i) => i.stock_qty === 0);
+  const lowStockItems = allAlertItems.filter((i) => i.stock_qty > 0);
 
   const totalRevenue = todaySales?.reduce((s, r) => s + Number(r.total), 0) ?? 0;
   const cashRevenue = todaySales?.filter((s) => s.payment_method === "cash").reduce((s, r) => s + Number(r.total), 0) ?? 0;
@@ -107,6 +109,27 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
+      {outOfStockItems.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2 pt-3 px-3">
+            <div className="flex items-center gap-1.5">
+              <PackageX size={15} className="text-red-500" />
+              <CardTitle className="text-sm">Out of Stock</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {outOfStockItems.map((item) => (
+                <div key={item.id} className="flex justify-between text-sm">
+                  <span className="truncate flex-1">{item.name}</span>
+                  <Badge variant="destructive" className="ml-2 flex-shrink-0">Out</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {lowStockItems.length > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-3 px-3">
@@ -115,16 +138,15 @@ export default async function DashboardPage() {
               <CardTitle className="text-sm">Low Stock</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-1">
-            {lowStockItems.slice(0, 6).map((item) => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <span className="truncate flex-1">{item.name}</span>
-                <Badge variant={item.stock_qty === 0 ? "destructive" : "secondary"} className="ml-2 flex-shrink-0">
-                  {item.stock_qty === 0 ? "Out" : `${item.stock_qty}`}
-                </Badge>
-              </div>
-            ))}
-            {lowStockItems.length > 6 && <p className="text-xs text-muted-foreground">+{lowStockItems.length - 6} more</p>}
+          <CardContent className="px-3 pb-3">
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {lowStockItems.map((item) => (
+                <div key={item.id} className="flex justify-between text-sm">
+                  <span className="truncate flex-1">{item.name}</span>
+                  <Badge variant="destructive" className="ml-2 flex-shrink-0 bg-amber-500 hover:bg-amber-500">{item.stock_qty}</Badge>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
