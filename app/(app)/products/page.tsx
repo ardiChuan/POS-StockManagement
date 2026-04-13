@@ -10,24 +10,19 @@ import { apiFetch } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
 import Link from "next/link";
-import type { Product, ProductVariant } from "@/types";
-
-type VariantRow = { id: string; size_label: string; price: number; stock_qty: number; low_stock_threshold: number };
-type ProductRow = Product & { variants: VariantRow[]; category: { name: string } | null };
-
-function isDefaultVariant(v: VariantRow) { return v.size_label === ""; }
-function hasRealVariants(p: ProductRow) { return p.variants.some((v) => v.size_label !== ""); }
+import type { ProductWithVariants, ProductVariant } from "@/types";
+import { isDefaultVariant, hasRealVariants } from "@/lib/product-helpers";
 
 export default function ProductsPage() {
   const cart = useCart();
 
-  const [products, setProducts] = useState<ProductRow[]>([]);
+  const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   // Add-to-cart dialog state
-  const [cartDialog, setCartDialog] = useState<ProductRow | null>(null);
-  const [cartVariant, setCartVariant] = useState<VariantRow | null>(null);
+  const [cartDialog, setCartDialog] = useState<ProductWithVariants | null>(null);
+  const [cartVariant, setCartVariant] = useState<ProductVariant | null>(null);
   const [cartQty, setCartQty] = useState("1");
 
   const loadProducts = useCallback(async () => {
@@ -42,7 +37,7 @@ export default function ProductsPage() {
     !search || p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  function openCartDialog(p: ProductRow) {
+  function openCartDialog(p: ProductWithVariants) {
     setCartDialog(p);
     if (!hasRealVariants(p)) {
       const def = p.variants.find(isDefaultVariant);
@@ -126,18 +121,19 @@ export default function ProductsPage() {
                     {realVariants ? (
                       <div className="mt-1 space-y-0.5 pr-3 flex flex-col items-end">
                         {p.variants.filter((v) => v.size_label !== "").map((v) => (
-                          <div key={v.id} className="flex justify-end gap-3 text-xs text-muted-foreground">
-                            <span>{v.size_label}</span>
-                            <span>{formatCurrency(v.price)}</span>
-                            <span className="text-right">{p.track_stock ? getStockBadge(v.stock_qty, v.low_stock_threshold) : null}</span>
+                          <div key={v.id} className="flex text-xs text-muted-foreground">
+                            <span className="w-20 text-right">{v.size_label}</span>
+                            <span className="w-24 text-left ml-2">{formatCurrency(v.price)}</span>
+                            <span className="w-12 text-right">{p.track_stock ? getStockBadge(v.stock_qty, v.low_stock_threshold) : "—"}</span>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="mt-1 space-y-0.5 pr-3 flex flex-col items-end">
-                        <div className="flex justify-end gap-3 text-xs text-muted-foreground">
-                          <span>{formatCurrency(defVariant?.price ?? 0)}</span>
-                          <span className="text-right">{p.track_stock && defVariant ? getStockBadge(defVariant.stock_qty, defVariant.low_stock_threshold) : null}</span>
+                        <div className="flex text-xs text-muted-foreground">
+                          <span className="w-20 text-right">—</span>
+                          <span className="w-24 text-left">{formatCurrency(defVariant?.price ?? 0)}</span>
+                          <span className="w-14 text-right">{p.track_stock && defVariant ? getStockBadge(defVariant.stock_qty, defVariant.low_stock_threshold) : "—"}</span>
                         </div>
                       </div>
                     )}

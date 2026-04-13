@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { getDeviceFromCookies } from "@/lib/auth";
+import type { ProductWithVariants } from "@/types";
 
 export async function GET() {
   try {
     const device = await getDeviceFromCookies();
-
-    type VariantRow = { id: string; size_label: string; price: number; stock_qty: number; low_stock_threshold: number };
-    type ProductRow = { id: string; name: string; is_fish: boolean; track_stock: boolean; variants: VariantRow[] };
 
     const [{ data: rawProducts }, { data: fishAvailable }] = await Promise.all([
       supabase
@@ -17,7 +15,7 @@ export async function GET() {
         .order("name"),
       supabase.from("fish").select("id").eq("status", "available"),
     ]);
-    const products = rawProducts as ProductRow[] | null;
+    const products = rawProducts as ProductWithVariants[] | null;
 
     const productRows = (products ?? []).flatMap((p) =>
       (p.variants ?? []).map((v) => ({

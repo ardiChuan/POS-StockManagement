@@ -63,6 +63,10 @@ export interface ProductVariant {
   updated_at: string;
 }
 
+// Composite types for pages that join products + variants
+export type ProductWithVariants = Product & { variants: ProductVariant[]; category: { name: string } | null };
+export type VariantWithProduct = ProductVariant & { product: { name: string } | null };
+
 // ─── Fish ─────────────────────────────────────────────────────────────────────
 
 export type FishStatus = 'available' | 'sold';

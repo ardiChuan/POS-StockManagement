@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
       throw saleErr;
     }
 
-    return processSaleItems(sale, items, device.id);
+    return await processSaleItems(sale, items, device.id);
   } catch (err) {
     console.error("[sales POST]", err);
     return NextResponse.json({ error: "Failed to process sale" }, { status: 500 });
@@ -157,71 +157,107 @@ export async function POST(req: NextRequest) {
 
 async function processSaleItems(sale: { id: string; payment_method: string }, items: CreateSaleRequest["items"], deviceId: string) {
   const now = new Date().toISOString();
+  const rollbacks: (() => Promise<void>)[] = [];
 
-  // ── 7. Insert sale items ─────────────────────────────────────────────────
-  const saleItemRows = items.map((i) => ({
-    sale_id: sale.id,
-    item_type: i.item_type,
-    fish_id: i.fish_id ?? null,
-    product_id: i.product_id ?? null,
-    variant_id: i.variant_id ?? null,
-    description: i.description,
-    unit_price: i.unit_price,
-    qty: i.qty,
-    line_total: i.unit_price * i.qty,
-  }));
+  try {
+    // ── 7. Insert sale items ───────────────────────────────────────────────
+    const saleItemRows = items.map((i) => ({
+      sale_id: sale.id,
+      item_type: i.item_type,
+      fish_id: i.fish_id ?? null,
+      product_id: i.product_id ?? null,
+      variant_id: i.variant_id ?? null,
+      description: i.description,
+      unit_price: i.unit_price,
+      qty: i.qty,
+      line_total: i.unit_price * i.qty,
+    }));
 
-  const { error: itemsErr } = await supabase.from("sale_items").insert(saleItemRows);
-  if (itemsErr) throw itemsErr;
+    const { error: itemsErr } = await supabase.from("sale_items").insert(saleItemRows);
+    if (itemsErr) throw itemsErr;
+    rollbacks.push(async () => {
+      await supabase.from("sale_items").delete().eq("sale_id", sale.id);
+    });
 
-  // ── 8. Mark fish as sold ─────────────────────────────────────────────────
-  const fishItems = items.filter((i) => i.item_type === "fish");
-  for (const fi of fishItems) {
-    await supabase
-      .from("fish")
-      .update({ status: "sold", sold_at: now, updated_at: now })
-      .eq("id", fi.fish_id!);
-  }
-
-  // ── 9. Deduct variant stock + log adjustments (skip untracked) ──────────
-  const productItems = items.filter((i) => i.item_type === "product");
-  for (const pi of productItems) {
-    const { data: prodCheck } = await supabase
-      .from("products")
-      .select("track_stock")
-      .eq("id", pi.product_id!)
-      .single();
-    if (!prodCheck?.track_stock) continue;
-
-    const { data: variant } = await supabase
-      .from("product_variants")
-      .select("stock_qty")
-      .eq("id", pi.variant_id!)
-      .single();
-    if (variant) {
-      const newQty = variant.stock_qty - pi.qty;
-      await supabase
-        .from("product_variants")
-        .update({ stock_qty: newQty, updated_at: now })
-        .eq("id", pi.variant_id!);
-      await supabase.from("stock_adjustments").insert({
-        product_id: pi.product_id!,
-        variant_id: pi.variant_id!,
-        adjustment_type: "sale",
-        qty_before: variant.stock_qty,
-        qty_change: -pi.qty,
-        qty_after: newQty,
-        note: `Sale ${sale.id}`,
-        device_id: deviceId,
-        related_sale_id: sale.id,
+    // ── 8. Mark fish as sold ───────────────────────────────────────────────
+    const fishItems = items.filter((i) => i.item_type === "fish");
+    const soldFishIds: string[] = [];
+    for (const fi of fishItems) {
+      const { error } = await supabase
+        .from("fish")
+        .update({ status: "sold", sold_at: now, updated_at: now })
+        .eq("id", fi.fish_id!);
+      if (error) throw error;
+      soldFishIds.push(fi.fish_id!);
+    }
+    if (soldFishIds.length > 0) {
+      rollbacks.push(async () => {
+        for (const fishId of soldFishIds) {
+          await supabase.from("fish").update({ status: "available", sold_at: null, updated_at: now }).eq("id", fishId);
+        }
       });
     }
+
+    // ── 9. Deduct variant stock + log adjustments (skip untracked) ────────
+    const productItems = items.filter((i) => i.item_type === "product");
+    const stockChanges: { variantId: string; oldQty: number }[] = [];
+    for (const pi of productItems) {
+      const { data: prodCheck } = await supabase
+        .from("products")
+        .select("track_stock")
+        .eq("id", pi.product_id!)
+        .single();
+      if (!prodCheck?.track_stock) continue;
+
+      const { data: variant } = await supabase
+        .from("product_variants")
+        .select("stock_qty")
+        .eq("id", pi.variant_id!)
+        .single();
+      if (variant) {
+        const newQty = variant.stock_qty - pi.qty;
+        const { error } = await supabase
+          .from("product_variants")
+          .update({ stock_qty: newQty, updated_at: now })
+          .eq("id", pi.variant_id!);
+        if (error) throw error;
+        stockChanges.push({ variantId: pi.variant_id!, oldQty: variant.stock_qty });
+
+        await supabase.from("stock_adjustments").insert({
+          product_id: pi.product_id!,
+          variant_id: pi.variant_id!,
+          adjustment_type: "sale",
+          qty_before: variant.stock_qty,
+          qty_change: -pi.qty,
+          qty_after: newQty,
+          note: `Sale ${sale.id}`,
+          device_id: deviceId,
+          related_sale_id: sale.id,
+        });
+      }
+    }
+    if (stockChanges.length > 0) {
+      rollbacks.push(async () => {
+        for (const { variantId, oldQty } of stockChanges) {
+          await supabase.from("product_variants").update({ stock_qty: oldQty, updated_at: now }).eq("id", variantId);
+        }
+        await supabase.from("stock_adjustments").delete().eq("related_sale_id", sale.id);
+      });
+    }
+
+    // ── 10. Ensure today's cash_register row exists ────────────────────────
+    await ensureTodayCashRegister();
+
+    return NextResponse.json({ id: sale.id }, { status: 201 });
+  } catch (err) {
+    // Compensate in reverse order, then delete sale
+    console.error("[sales] processSaleItems failed, rolling back:", err);
+    for (const undo of rollbacks.reverse()) {
+      try { await undo(); } catch (rollbackErr) { console.error("[sales] rollback step failed:", rollbackErr); }
+    }
+    await supabase.from("sales").delete().eq("id", sale.id);
+    throw err;
   }
-
-  // ── 10. Ensure today's cash_register row exists ──────────────────────────
-  await ensureTodayCashRegister();
-
-  return NextResponse.json({ id: sale.id }, { status: 201 });
 }
 
 async function ensureTodayCashRegister() {

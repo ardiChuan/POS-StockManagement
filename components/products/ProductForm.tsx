@@ -25,22 +25,34 @@ export function ProductForm({ product }: ProductFormProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCatSuggestions, setShowCatSuggestions] = useState(false);
   // For single products, read price/stock from default variant
-  const defaultVariant = (product?.variants ?? []).find((v) => v.size_label === "");
-  const [price, setPrice] = useState(
-    defaultVariant ? defaultVariant.price.toString() : (product?.price?.toString() ?? "")
-  );
-  const [stockQty, setStockQty] = useState(
-    defaultVariant ? defaultVariant.stock_qty.toString() : (product?.stock_qty?.toString() ?? "")
-  );
   const [trackStock, setTrackStock] = useState(product?.track_stock ?? true);
+  const [lowStockAlertEnabled, setLowStockAlertEnabled] = useState((product?.low_stock_threshold ?? 5) > 0);
   const [lowStockThreshold, setLowStockThreshold] = useState(product?.low_stock_threshold?.toString() ?? "5");
-  // Filter out default variant (size_label = '') — those are managed implicitly
-  const [variants, setVariants] = useState<(Partial<ProductVariant> & { tempId: string })[]>(
-    (product?.variants ?? []).filter((v) => v.size_label !== "").map((v) => ({ ...v, tempId: v.id }))
-  );
+  // All variants including blank-label (default). New products auto-start with one blank row.
+  const [variants, setVariants] = useState<(Partial<ProductVariant> & { tempId: string })[]>(() => {
+    if (product) {
+      return (product.variants ?? []).map((v) => ({ ...v, tempId: v.id }));
+    }
+    return [{ tempId: "default-new", size_label: "", price: 0, stock_qty: 0, low_stock_threshold: 5 }];
+  });
   const [saving, setSaving] = useState(false);
 
-  const hasVariants = variants.length > 0;
+  // Track original stock for edit mode — diffs → adjustment logs
+  const [originalStockMap] = useState<Map<string, number>>(() => {
+    const map = new Map<string, number>();
+    (product?.variants ?? []).forEach((v) => map.set(v.id, v.stock_qty));
+    return map;
+  });
+  const [adjustNote, setAdjustNote] = useState("");
+
+  const hasStockChanges = isEdit && variants.some((v) => {
+    if (!v.id) return false;
+    const original = originalStockMap.get(v.id);
+    return original !== undefined && Number(v.stock_qty ?? 0) !== original;
+  });
+
+  const namedVariants = variants.filter((v) => (v.size_label ?? "") !== "");
+  const hasVariants = namedVariants.length > 0;
 
   useEffect(() => {
     apiFetch("/api/categories").then((r) => r.json()).then(setCategories);
@@ -90,7 +102,10 @@ export function ProductForm({ product }: ProductFormProps) {
 
     setSaving(true);
     try {
-      // Save product
+      const blankVariant = variants.find((v) => (v.size_label ?? "") === "");
+      const threshold = lowStockAlertEnabled ? (Number(lowStockThreshold) || 5) : 0;
+
+      // Save product — pass blank variant's price/stock for default variant creation/update
       const url = isEdit ? `/api/products/${product!.id}` : "/api/products";
       const method = isEdit ? "PUT" : "POST";
       const res = await apiFetch(url, {
@@ -100,10 +115,9 @@ export function ProductForm({ product }: ProductFormProps) {
           category_id: categoryId,
           is_fish: isFish,
           track_stock: trackStock,
-          // For single products (no user variants), pass price/stock so API can update default variant
-          price: hasVariants ? null : (price ? Number(price) : 0),
-          stock_qty: hasVariants ? null : (trackStock ? (stockQty ? Number(stockQty) : 0) : 0),
-          low_stock_threshold: Number(lowStockThreshold) || 5,
+          price: blankVariant ? Number(blankVariant.price ?? 0) : null,
+          stock_qty: blankVariant ? (trackStock ? Number(blankVariant.stock_qty ?? 0) : 0) : null,
+          low_stock_threshold: threshold,
         }),
       });
       const data = await res.json();
@@ -111,29 +125,67 @@ export function ProductForm({ product }: ProductFormProps) {
 
       const productId = data.id ?? product!.id;
 
-      // Save user-created variants (only if user added size variants)
+      // For edit: directly PUT blank variant if it has an existing id
+      if (isEdit && blankVariant?.id) {
+        await apiFetch(`/api/products/${productId}/variants/${blankVariant.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            size_label: "",
+            price: Number(blankVariant.price ?? 0),
+            low_stock_threshold: threshold,
+          }),
+        });
+      }
+
+      // Named variants (size_label != '')
       if (hasVariants) {
-        const existingVariants = (product?.variants ?? []).filter((v) => v.size_label !== "");
-        const existingIds = new Set(existingVariants.map((v) => v.id));
-        for (const v of variants) {
+        const existingNamed = (product?.variants ?? []).filter((v) => v.size_label !== "");
+        const existingIds = new Set(existingNamed.map((v) => v.id));
+        for (const v of namedVariants) {
           const isNew = !existingIds.has(v.id ?? "");
+          const varThreshold = lowStockAlertEnabled ? (v.low_stock_threshold ?? 5) : 0;
           if (isNew) {
             await apiFetch(`/api/products/${productId}/variants`, {
               method: "POST",
-              body: JSON.stringify({ size_label: v.size_label, price: v.price, stock_qty: v.stock_qty, low_stock_threshold: v.low_stock_threshold }),
+              body: JSON.stringify({ size_label: v.size_label, price: v.price, stock_qty: v.stock_qty, low_stock_threshold: varThreshold }),
             });
           } else {
+            // Edit mode: exclude stock_qty from PUT — stock changes go through /api/stock/adjust
+            const varBody: Record<string, unknown> = { size_label: v.size_label, price: v.price, low_stock_threshold: varThreshold };
+            if (!isEdit) varBody.stock_qty = v.stock_qty;
             await apiFetch(`/api/products/${productId}/variants/${v.id}`, {
               method: "PUT",
-              body: JSON.stringify({ size_label: v.size_label, price: v.price, stock_qty: v.stock_qty, low_stock_threshold: v.low_stock_threshold }),
+              body: JSON.stringify(varBody),
             });
           }
         }
 
-        // Delete removed variants
-        const removedIds = existingVariants.filter((v) => !variants.find((nv) => nv.id === v.id)).map((v) => v.id);
+        // Delete removed named variants
+        const removedIds = existingNamed.filter((v) => !namedVariants.find((nv) => nv.id === v.id)).map((v) => v.id);
         for (const vid of removedIds) {
           await apiFetch(`/api/products/${productId}/variants/${vid}`, { method: "DELETE" });
+        }
+      }
+
+      // Stock adjustments — edit mode only, for existing variants with changed stock
+      if (isEdit) {
+        for (const v of variants) {
+          if (!v.id) continue;
+          const original = originalStockMap.get(v.id);
+          const newQty = Number(v.stock_qty ?? 0);
+          if (original !== undefined && newQty !== original) {
+            await apiFetch("/api/stock/adjust", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                product_id: productId,
+                variant_id: v.id,
+                qty_change: newQty - original,
+                note: adjustNote.trim() || null,
+              }),
+            });
+          }
         }
       }
 
@@ -200,6 +252,14 @@ export function ProductForm({ product }: ProductFormProps) {
         {!trackStock && <span className="text-xs text-muted-foreground">Stock won&apos;t be counted or enforced</span>}
       </div>
 
+      {trackStock && (
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="low_stock_alert" checked={lowStockAlertEnabled} onChange={(e) => setLowStockAlertEnabled(e.target.checked)} className="h-4 w-4" />
+          <Label htmlFor="low_stock_alert">Low stock alert</Label>
+          {!lowStockAlertEnabled && <span className="text-xs text-muted-foreground">No alert when stock runs low</span>}
+        </div>
+      )}
+
       <Separator />
 
       {/* Variants section */}
@@ -212,13 +272,13 @@ export function ProductForm({ product }: ProductFormProps) {
         {variants.map((v) => (
           <div key={v.tempId} className="bg-zinc-50 rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <Badge variant="secondary">{v.size_label || "New Size"}</Badge>
+              <Badge variant="secondary">{v.size_label || "—"}</Badge>
               <Button type="button" size="sm" variant="ghost" className="text-red-500 h-7"
                 onClick={() => removeVariant(v.tempId!)}>Remove</Button>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Size Label *</Label>
+                <Label className="text-xs">Size Label <span className="text-muted-foreground">(optional)</span></Label>
                 <Input placeholder="e.g. 500g, Large" value={v.size_label ?? ""}
                   onChange={(e) => updateVariant(v.tempId!, "size_label", e.target.value)} />
               </div>
@@ -234,7 +294,7 @@ export function ProductForm({ product }: ProductFormProps) {
                     onChange={(e) => updateVariant(v.tempId!, "stock_qty", Number(e.target.value))} />
                 </div>
               )}
-              {trackStock && (
+              {trackStock && lowStockAlertEnabled && (
                 <div className="space-y-1">
                   <Label className="text-xs">Low Stock Alert</Label>
                   <Input type="number" placeholder="5" value={v.low_stock_threshold ?? ""}
@@ -245,39 +305,18 @@ export function ProductForm({ product }: ProductFormProps) {
           </div>
         ))}
 
-        {variants.length === 0 && (
-          <p className="text-xs text-muted-foreground">No variants — use the fields below for a single price/stock.</p>
-        )}
       </div>
 
-      {/* Single price/stock (shown only when no variants) */}
-      {!hasVariants && (
-        <>
-          <Separator />
-          <div className={trackStock ? "grid grid-cols-2 gap-3" : "space-y-1"}>
-            <div className="space-y-1">
-              <Label>Price (Rp)</Label>
-              <Input type="number" placeholder="0" value={price} onChange={(e) => setPrice(e.target.value)} />
-            </div>
-            {trackStock && (
-              <div className="space-y-1">
-                <Label>Stock</Label>
-                <Input type="number" placeholder="0" value={stockQty} onChange={(e) => setStockQty(e.target.value)} />
-              </div>
-            )}
-          </div>
-          {trackStock && (
-            <div className="space-y-1">
-              <Label>Low Stock Alert at</Label>
-              <Input type="number" placeholder="5" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} />
-            </div>
-          )}
-        </>
+      {hasStockChanges && (
+        <div className="space-y-1">
+          <Label>Stock Adjustment Note</Label>
+          <Input placeholder="Reason for stock change…" value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} />
+        </div>
       )}
 
       <div className="flex gap-2 pt-2">
         <Button type="submit" className="flex-1" disabled={saving}>
-          {saving ? "Saving…" : isEdit ? "Update Product" : "Add Product"}
+          {saving ? "Saving…" : isEdit ? "Save Changes" : "Add Product"}
         </Button>
         {isEdit && (
           <Button type="button" variant="destructive" onClick={handleDelete}>Delete</Button>

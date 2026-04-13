@@ -1,20 +1,17 @@
 import { supabase } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
+import type { ProductWithVariants } from "@/types";
 
 export const dynamic = "force-dynamic";
-
-type VariantRow = { id: string; size_label: string; price: number; stock_qty: number; low_stock_threshold: number };
-type ProductRow = { id: string; name: string; is_fish: boolean; track_stock: boolean; variants: VariantRow[] };
-type FishRow = { id: string };
 
 export default async function ReportsInventoryPage() {
   const [{ data: rawProducts }, { data: rawFish }] = await Promise.all([
     supabase.from("products").select("*, variants:product_variants(*)").eq("is_active", true).order("name"),
     supabase.from("fish").select("id, fish_display_id, tank_id, status").eq("status", "available"),
   ]);
-  const products = rawProducts as ProductRow[] | null;
-  const fish = rawFish as FishRow[] | null;
+  const products = rawProducts as ProductWithVariants[] | null;
+  const fish = rawFish as { id: string }[] | null;
 
   const rows = (products ?? []).flatMap((p) =>
     (p.variants ?? []).map((v) => ({

@@ -5,6 +5,7 @@ import { getDeviceFromCookies } from "@/lib/auth";
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string; vid: string }> }) {
   try {
     const device = await getDeviceFromCookies();
+    if (!device) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { vid } = await params;
     const { size_label, price, stock_qty, low_stock_threshold } = await req.json();

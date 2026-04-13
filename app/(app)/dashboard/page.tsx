@@ -5,13 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { TrendingUp, Wallet, ArrowLeftRight, TrendingDown, AlertTriangle, PackageX } from "lucide-react";
+import type { CashRegister, Sale, VariantWithProduct } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-type CashRegisterRow = { opening_balance: number; discrepancy: number | null };
-type VariantRow = { id: string; size_label: string; stock_qty: number; low_stock_threshold: number; product: { name: string } | null };
-type SaleRow = { id: string; sale_number: string; total: number; payment_method: string; created_at: string; customer: { name: string } | null };
-type TodaySaleRow = { total: number; payment_method: string };
+type TodaySaleRow = Pick<Sale, "total" | "payment_method">;
 type ExpenseRow = { amount: number };
 
 export default async function DashboardPage() {
@@ -27,17 +25,17 @@ export default async function DashboardPage() {
     supabase.from("sales").select("total, payment_method").gte("created_at", todayStart).lte("created_at", todayEnd),
     supabase.from("expenses").select("amount").gte("created_at", todayStart).lte("created_at", todayEnd),
     supabase.from("sales").select("id, sale_number, total, payment_method, created_at, customer:customers(name)").order("created_at", { ascending: false }).limit(10),
-    supabase.from("product_variants").select("id, size_label, stock_qty, low_stock_threshold, product:products(id, name)").limit(200),
+    supabase.from("product_variants").select("id, size_label, stock_qty, low_stock_threshold, product:products(id, name, track_stock)").limit(200),
   ]);
 
-  const cashRegister = cashRegRes.data as CashRegisterRow | null;
+  const cashRegister = cashRegRes.data as Pick<CashRegister, "opening_balance" | "discrepancy"> | null;
   const todaySales = salesRes.data as TodaySaleRow[] | null;
   const todayExpenses = expRes.data as ExpenseRow[] | null;
-  const recentSales = recentRes.data as SaleRow[] | null;
-  const lowStockVariants = varRes.data as VariantRow[] | null;
+  const recentSales = recentRes.data as (Pick<Sale, "id" | "sale_number" | "total" | "payment_method" | "created_at"> & { customer: { name: string } | null })[] | null;
+  const lowStockVariants = varRes.data as (VariantWithProduct & { product: { track_stock: boolean } | null })[] | null;
 
   const allAlertItems = (lowStockVariants ?? [])
-    .filter((v) => v.stock_qty <= v.low_stock_threshold)
+    .filter((v) => v.product?.track_stock && v.stock_qty <= v.low_stock_threshold)
     .map((v) => ({
       id: v.id,
       name: v.size_label ? `${v.product?.name ?? "?"} (${v.size_label})` : (v.product?.name ?? "?"),
