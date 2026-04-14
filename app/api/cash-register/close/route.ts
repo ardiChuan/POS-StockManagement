@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { getDeviceFromCookies } from "@/lib/auth";
+import { getYesterdayOpeningBalance } from "@/lib/cash-register";
 
 export async function POST(req: NextRequest) {
   const device = await getDeviceFromCookies();
@@ -21,17 +22,10 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (!register) {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const { data: prev } = await supabase
-      .from("cash_register")
-      .select("actual_cash")
-      .eq("date", yesterday.toISOString().split("T")[0])
-      .single();
-
+    const openingBalance = await getYesterdayOpeningBalance();
     const { data: created } = await supabase
       .from("cash_register")
-      .insert({ date: today, opening_balance: prev?.actual_cash ?? 0 })
+      .insert({ date: today, opening_balance: openingBalance })
       .select()
       .single();
     register = created;

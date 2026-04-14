@@ -25,7 +25,7 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@react-pdf/renderer"],
   turbopack: {},
-  allowedDevOrigins: ["192.168.0.33", "192.168.0.148"],
+  allowedDevOrigins: ["192.168.0.33", "192.168.0.148", "192.168.1.6"],
 };
 
 export default withPWA(nextConfig);

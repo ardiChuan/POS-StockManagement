@@ -164,7 +164,7 @@ export default function ProductsPage() {
 
       {/* Category filter chips */}
       {categories.length > 0 && (
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <button
             onClick={() => setSelectedCategory(null)}
             className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
@@ -203,26 +203,24 @@ export default function ProductsPage() {
             return (
               <div key={p.id} className="bg-card border rounded-xl p-3">
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 min-w-0 flex items-center gap-2">
-                    <div className="flex items-center gap-2 flex-wrap flex-1">
-                      <p className="font-semibold text-sm">{p.name}</p>
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{p.name}</p>
 
                     {realVariants ? (
-                      <div className="mt-1 space-y-0.5 pr-3 flex flex-col items-end">
+                      <div className="mt-1 space-y-0.5">
                         {p.variants.filter((v) => v.size_label !== "").map((v) => (
                           <div key={v.id} className="flex text-xs text-muted-foreground">
-                            <span className="w-20 text-right">{v.size_label}</span>
-                            <span className="w-24 text-left ml-2">{formatCurrency(v.price)}</span>
+                            <span className="w-20">{v.size_label}</span>
+                            <span className="w-24 ml-2">{formatCurrency(v.price)}</span>
                             <span className="w-12 text-right">{p.track_stock ? getStockBadge(v.stock_qty, v.low_stock_threshold) : "—"}</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="mt-1 space-y-0.5 pr-3 flex flex-col items-end">
+                      <div className="mt-1">
                         <div className="flex text-xs text-muted-foreground">
-                          <span className="w-20 text-right">—</span>
-                          <span className="w-24 text-left">{formatCurrency(defVariant?.price ?? 0)}</span>
+                          <span className="w-20">—</span>
+                          <span className="w-24 ml-2">{formatCurrency(defVariant?.price ?? 0)}</span>
                           <span className="w-14 text-right">{p.track_stock && defVariant ? getStockBadge(defVariant.stock_qty, defVariant.low_stock_threshold) : "—"}</span>
                         </div>
                       </div>

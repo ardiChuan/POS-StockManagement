@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { getDeviceFromCookies } from "@/lib/auth";
 import type { CreateSaleRequest, DiscountType, PaymentMethod } from "@/types";
+import { getYesterdayOpeningBalance } from "@/lib/cash-register";
 
 // GET /api/sales
 export async function GET(req: NextRequest) {
@@ -269,20 +270,10 @@ async function ensureTodayCashRegister() {
     .single();
 
   if (!existing) {
-    // Get yesterday's closing balance
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yDate = yesterday.toISOString().split("T")[0];
-
-    const { data: prev } = await supabase
-      .from("cash_register")
-      .select("actual_cash")
-      .eq("date", yDate)
-      .single();
-
+    const openingBalance = await getYesterdayOpeningBalance();
     await supabase.from("cash_register").insert({
       date: today,
-      opening_balance: prev?.actual_cash ?? 0,
+      opening_balance: openingBalance,
     });
   }
 }
