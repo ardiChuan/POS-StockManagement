@@ -20,7 +20,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { data: saleItems, error: itemsErr } = await supabase
       .from("sale_items")
       .select("id, item_type, product_id, variant_id, unit_price, qty, refunded_qty")
-      .eq("sale_id", saleId);
+      .eq("sale_id", saleId) as {
+        data: { id: string; item_type: string; product_id: string | null; variant_id: string | null; unit_price: number; qty: number; refunded_qty: number }[] | null;
+        error: unknown;
+      };
 
     if (itemsErr || !saleItems) {
       return NextResponse.json({ error: "Sale not found" }, { status: 404 });
