@@ -19,7 +19,6 @@ export function ProductForm({ product }: ProductFormProps) {
   const isEdit = !!product;
 
   const [name, setName] = useState(product?.name ?? "");
-  const [isFish, setIsFish] = useState(product?.is_fish ?? false);
   const [categoryInput, setCategoryInput] = useState(product?.category?.name ?? "");
   const [categoryId, setCategoryId] = useState(product?.category_id ?? null as string | null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -113,7 +112,6 @@ export function ProductForm({ product }: ProductFormProps) {
         body: JSON.stringify({
           name: name.trim(),
           category_id: categoryId,
-          is_fish: isFish,
           track_stock: trackStock,
           price: blankVariant ? Number(blankVariant.price ?? 0) : null,
           stock_qty: blankVariant ? (trackStock ? Number(blankVariant.stock_qty ?? 0) : 0) : null,
@@ -237,12 +235,6 @@ export function ProductForm({ product }: ProductFormProps) {
             )}
           </div>
         )}
-      </div>
-
-      {/* Type toggle */}
-      <div className="flex items-center gap-2">
-        <input type="checkbox" id="is_fish" checked={isFish} onChange={(e) => setIsFish(e.target.checked)} className="h-4 w-4" />
-        <Label htmlFor="is_fish">This is a fish product (stock-based)</Label>
       </div>
 
       {/* Track stock toggle */}

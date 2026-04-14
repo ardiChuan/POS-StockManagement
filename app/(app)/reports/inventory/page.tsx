@@ -6,18 +6,17 @@ import type { ProductWithVariants } from "@/types";
 export const dynamic = "force-dynamic";
 
 export default async function ReportsInventoryPage() {
-  const [{ data: rawProducts }, { data: rawFish }] = await Promise.all([
-    supabase.from("products").select("*, variants:product_variants(*)").eq("is_active", true).order("name"),
-    supabase.from("fish").select("id, fish_display_id, tank_id, status").eq("status", "available"),
-  ]);
+  const { data: rawProducts } = await supabase
+    .from("products")
+    .select("*, variants:product_variants(*)")
+    .eq("is_active", true)
+    .order("name");
   const products = rawProducts as ProductWithVariants[] | null;
-  const fish = rawFish as { id: string }[] | null;
 
   const rows = (products ?? []).flatMap((p) =>
     (p.variants ?? []).map((v) => ({
       key: v.id,
       name: v.size_label ? `${p.name} (${v.size_label})` : p.name,
-      is_fish: p.is_fish,
       track_stock: p.track_stock,
       price: v.price,
       stock: v.stock_qty,
@@ -28,11 +27,6 @@ export default async function ReportsInventoryPage() {
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
       <h1 className="font-bold text-2xl tracking-tight">Inventory</h1>
-
-      <div className="bg-card border rounded-xl p-3 text-sm">
-        <p className="font-semibold">Individual Fish Available</p>
-        <p className="text-2xl font-bold">{fish?.length ?? 0}</p>
-      </div>
 
       <div className="space-y-2">
         {rows.map((row) => (

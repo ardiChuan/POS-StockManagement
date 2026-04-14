@@ -120,7 +120,7 @@ export default async function DashboardPage() {
               {outOfStockItems.map((item) => (
                 <div key={item.id} className="flex justify-between text-sm">
                   <span className="truncate flex-1">{item.name}</span>
-                  <Badge variant="destructive" className="ml-2 flex-shrink-0">Out</Badge>
+                  <Badge variant="destructive" className="ml-2 flex-shrink-0 min-w-[3rem] justify-center">Out</Badge>
                 </div>
               ))}
             </div>
@@ -141,7 +141,7 @@ export default async function DashboardPage() {
               {lowStockItems.map((item) => (
                 <div key={item.id} className="flex justify-between text-sm">
                   <span className="truncate flex-1">{item.name}</span>
-                  <Badge variant="destructive" className="ml-2 flex-shrink-0 bg-amber-500 hover:bg-amber-500">{item.stock_qty}</Badge>
+                  <Badge className="ml-2 flex-shrink-0 min-w-[3rem] justify-center bg-amber-500 hover:bg-amber-500 text-white">{item.stock_qty}</Badge>
                 </div>
               ))}
             </div>

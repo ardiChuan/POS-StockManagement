@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency, formatDateTime, todayDateString, cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ interface SaleItem {
   qty: number;
   unit_price: number;
   line_total: number;
+  refunded_qty: number;
 }
 
 interface SaleRow {
@@ -158,6 +160,7 @@ export default function ReportsPage() {
               sale={sale}
               expanded={expandedSaleId === sale.id}
               onToggle={() => setExpandedSaleId(expandedSaleId === sale.id ? null : sale.id)}
+              onRefunded={loadAll}
             />
           ))}
         </TabsContent>
@@ -230,15 +233,58 @@ export default function ReportsPage() {
 
 // ── Sale card with expandable detail ─────────────────────────────────────────
 
-function SaleCard({ sale, expanded, onToggle }: {
+function SaleCard({ sale, expanded, onToggle, onRefunded }: {
   sale: SaleRow;
   expanded: boolean;
   onToggle: () => void;
+  onRefunded: () => void;
 }) {
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [refunding, setRefunding] = useState(false);
+
   const subtotal = sale.items.reduce((s, i) => s + i.line_total, 0);
   const discountAmount = sale.discount_type === "percent"
     ? (subtotal * (sale.discount_value ?? 0)) / 100
     : (sale.discount_value ?? 0);
+
+  const hasAnyRefund = sale.items.some((i) => i.refunded_qty > 0);
+
+  const refundableItems = sale.items.filter((i) => i.refunded_qty < i.qty);
+
+  const checkedItems = sale.items.filter((i) => checkedIds.has(i.id));
+  const refundTotal = checkedItems.reduce((s, i) => s + i.unit_price * (i.qty - i.refunded_qty), 0);
+
+  function toggleCheck(id: string) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function confirmRefund() {
+    if (!checkedItems.length) return;
+    setRefunding(true);
+    try {
+      const res = await apiFetch(`/api/sales/${sale.id}/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: checkedItems.map((i) => ({
+            sale_item_id: i.id,
+            qty: i.qty - i.refunded_qty,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error ?? "Refund failed"); return; }
+      toast.success(`Refunded ${formatCurrency(data.refunded_total)}`);
+      setCheckedIds(new Set());
+      onRefunded();
+    } finally {
+      setRefunding(false);
+    }
+  }
 
   return (
     <div className="bg-card border rounded-xl overflow-hidden">
@@ -257,6 +303,9 @@ function SaleCard({ sale, expanded, onToggle }: {
             >
               {sale.payment_method === "cash" ? "Cash" : "Transfer"}
             </Badge>
+            {hasAnyRefund && (
+              <Badge className="text-[10px] bg-amber-500 hover:bg-amber-500">Refund</Badge>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">{formatDateTime(sale.created_at)}</p>
         </div>
@@ -269,15 +318,36 @@ function SaleCard({ sale, expanded, onToggle }: {
 
       {expanded && (
         <div className="border-t px-3 pb-3 pt-2 space-y-1.5 bg-muted/30">
-          {sale.items.map(item => (
-            <div key={item.id} className="flex justify-between text-sm">
-              <span className="flex-1 truncate text-muted-foreground">
-                {item.description}
-                <span className="text-foreground"> × {item.qty}</span>
-              </span>
-              <span className="font-medium flex-shrink-0 ml-2">{formatCurrency(item.line_total)}</span>
-            </div>
-          ))}
+          {sale.items.map((item) => {
+            const fullyRefunded = item.refunded_qty >= item.qty;
+            const checked = checkedIds.has(item.id);
+            return (
+              <div
+                key={item.id}
+                className={cn("flex items-center gap-2 text-sm", fullyRefunded && "opacity-50")}
+              >
+                {!fullyRefunded ? (
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 flex-shrink-0"
+                    checked={checked}
+                    onChange={() => toggleCheck(item.id)}
+                  />
+                ) : (
+                  <span className="h-3.5 w-3.5 flex-shrink-0" />
+                )}
+                <span className={cn("flex-1 truncate text-muted-foreground", fullyRefunded && "line-through")}>
+                  {item.description}
+                  <span className="text-foreground"> × {item.qty}</span>
+                </span>
+                {fullyRefunded ? (
+                  <span className="text-[10px] text-amber-600 flex-shrink-0">Refunded</span>
+                ) : (
+                  <span className="font-medium flex-shrink-0">{formatCurrency(item.line_total)}</span>
+                )}
+              </div>
+            );
+          })}
 
           {discountAmount > 0 && (
             <div className="flex justify-between text-sm text-red-600 border-t pt-1.5 mt-1">
@@ -290,6 +360,18 @@ function SaleCard({ sale, expanded, onToggle }: {
             <span>Total</span>
             <span>{formatCurrency(Number(sale.total))}</span>
           </div>
+
+          {refundableItems.length > 0 && checkedIds.size > 0 && (
+            <Button
+              size="sm"
+              variant="destructive"
+              className="w-full mt-1"
+              onClick={confirmRefund}
+              disabled={refunding}
+            >
+              {refunding ? "Processing…" : `Refund ${checkedIds.size} item${checkedIds.size > 1 ? "s" : ""} · ${formatCurrency(refundTotal)}`}
+            </Button>
+          )}
         </div>
       )}
     </div>

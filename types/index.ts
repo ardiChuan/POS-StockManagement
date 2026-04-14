@@ -39,7 +39,6 @@ export interface Product {
   id: string;
   category_id: string | null;
   name: string;
-  is_fish: boolean;
   price: number | null;       // always null — price lives on product_variants
   stock_qty: number | null;   // always null — stock lives on product_variants
   low_stock_threshold: number;
@@ -66,24 +65,6 @@ export interface ProductVariant {
 // Composite types for pages that join products + variants
 export type ProductWithVariants = Product & { variants: ProductVariant[]; category: { name: string } | null };
 export type VariantWithProduct = ProductVariant & { product: { name: string } | null };
-
-// ─── Fish ─────────────────────────────────────────────────────────────────────
-
-export type FishStatus = 'available' | 'sold';
-
-export interface Fish {
-  id: string;
-  fish_display_id: string;
-  tank_id: string;
-  size_label: string | null;
-  photo_url: string | null;
-  price: number;
-  status: FishStatus;
-  notes: string | null;
-  sold_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 // ─── Customers ───────────────────────────────────────────────────────────────
 
@@ -130,6 +111,7 @@ export interface SaleItem {
   unit_price: number;
   qty: number;
   line_total: number;
+  refunded_qty: number;
 }
 
 // ─── Cart (client-only) ───────────────────────────────────────────────────────

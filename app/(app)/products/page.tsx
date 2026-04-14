@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -10,20 +9,29 @@ import { apiFetch } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
 import Link from "next/link";
-import type { ProductWithVariants, ProductVariant } from "@/types";
+import type { ProductWithVariants, ProductVariant, Category } from "@/types";
 import { isDefaultVariant, hasRealVariants } from "@/lib/product-helpers";
+import { Pencil, Trash2, Check, X } from "lucide-react";
 
 export default function ProductsPage() {
   const cart = useCart();
 
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Add-to-cart dialog state
   const [cartDialog, setCartDialog] = useState<ProductWithVariants | null>(null);
   const [cartVariant, setCartVariant] = useState<ProductVariant | null>(null);
   const [cartQty, setCartQty] = useState("1");
+
+  // Category management dialog state
+  const [catDialog, setCatDialog] = useState(false);
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingCatName, setEditingCatName] = useState("");
+  const [deletingCatId, setDeletingCatId] = useState<string | null>(null);
 
   const loadProducts = useCallback(async () => {
     const res = await apiFetch("/api/products");
@@ -31,11 +39,21 @@ export default function ProductsPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadProducts(); }, [loadProducts]);
+  const loadCategories = useCallback(async () => {
+    const res = await apiFetch("/api/categories");
+    setCategories(await res.json());
+  }, []);
 
-  const filteredProducts = products.filter((p) =>
-    !search || p.name.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    loadProducts();
+    loadCategories();
+  }, [loadProducts, loadCategories]);
+
+  const filteredProducts = products.filter((p) => {
+    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (selectedCategory && p.category?.name !== selectedCategory) return false;
+    return true;
+  });
 
   function openCartDialog(p: ProductWithVariants) {
     setCartDialog(p);
@@ -75,6 +93,39 @@ export default function ProductsPage() {
     return <span className="text-xs text-muted-foreground">{stock} Pcs</span>;
   }
 
+  async function saveCatRename(id: string) {
+    if (!editingCatName.trim()) return;
+    const res = await apiFetch(`/api/categories/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ name: editingCatName.trim() }),
+    });
+    if (!res.ok) {
+      const e = await res.json();
+      toast.error(e.error ?? "Failed to rename");
+      return;
+    }
+    toast.success("Category renamed");
+    setEditingCatId(null);
+    setEditingCatName("");
+    await Promise.all([loadCategories(), loadProducts()]);
+  }
+
+  async function deleteCat(id: string) {
+    const res = await apiFetch(`/api/categories/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const e = await res.json();
+      toast.error(e.error ?? "Failed to delete");
+      setDeletingCatId(null);
+      return;
+    }
+    toast.success("Category deleted");
+    setDeletingCatId(null);
+    if (selectedCategory === categories.find((c) => c.id === id)?.name) {
+      setSelectedCategory(null);
+    }
+    await Promise.all([loadCategories(), loadProducts()]);
+  }
+
   const cartDialogHasRealVariants = cartDialog ? hasRealVariants(cartDialog) : false;
   const showQtyStep = !cartDialogHasRealVariants || cartVariant !== null;
 
@@ -93,12 +144,52 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <Input
-        placeholder="Search products…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      {/* Search + Category filter */}
+      <div className="flex gap-2">
+        <Input
+          placeholder="Search products…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1"
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setCatDialog(true)}
+          className="flex-shrink-0 text-xs px-3"
+        >
+          Categories
+        </Button>
+      </div>
+
+      {/* Category filter chips */}
+      {categories.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap">
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+              selectedCategory === null
+                ? "bg-foreground text-background border-foreground"
+                : "border-border text-muted-foreground hover:border-foreground/40"
+            }`}
+          >
+            All
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setSelectedCategory(selectedCategory === c.name ? null : c.name)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                selectedCategory === c.name
+                  ? "bg-foreground text-background border-foreground"
+                  : "border-border text-muted-foreground hover:border-foreground/40"
+              }`}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Product list */}
       {loading ? (
@@ -115,7 +206,6 @@ export default function ProductsPage() {
                   <div className="flex-1 min-w-0 flex items-center gap-2">
                     <div className="flex items-center gap-2 flex-wrap flex-1">
                       <p className="font-semibold text-sm">{p.name}</p>
-                      {p.is_fish && <Badge variant="outline" className="text-[10px]">Fish</Badge>}
                     </div>
 
                     {realVariants ? (
@@ -156,7 +246,7 @@ export default function ProductsPage() {
           })}
           {filteredProducts.length === 0 && (
             <p className="text-center text-muted-foreground py-8">
-              {search ? "No products match your search" : "No products yet"}
+              {search || selectedCategory ? "No products match your filter" : "No products yet"}
             </p>
           )}
         </div>
@@ -223,6 +313,59 @@ export default function ProductsPage() {
               </Button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Management Dialog */}
+      <Dialog open={catDialog} onOpenChange={(open) => {
+        if (!open) { setCatDialog(false); setEditingCatId(null); setEditingCatName(""); setDeletingCatId(null); }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Categories</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1 mt-2">
+            {categories.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No categories yet</p>
+            )}
+            {categories.map((c) => (
+              <div key={c.id} className="flex items-center gap-2 py-1.5">
+                {editingCatId === c.id ? (
+                  <>
+                    <Input
+                      value={editingCatName}
+                      onChange={(e) => setEditingCatName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") saveCatRename(c.id); if (e.key === "Escape") { setEditingCatId(null); setEditingCatName(""); } }}
+                      className="flex-1 h-8 text-sm"
+                      autoFocus
+                    />
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => saveCatRename(c.id)}>
+                      <Check size={14} />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditingCatId(null); setEditingCatName(""); }}>
+                      <X size={14} />
+                    </Button>
+                  </>
+                ) : deletingCatId === c.id ? (
+                  <>
+                    <span className="flex-1 text-sm text-red-600">Delete &ldquo;{c.name}&rdquo;?</span>
+                    <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => deleteCat(c.id)}>Delete</Button>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setDeletingCatId(null)}>Cancel</Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm">{c.name}</span>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditingCatId(c.id); setEditingCatName(c.name); }}>
+                      <Pencil size={14} />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeletingCatId(c.id)}>
+                      <Trash2 size={14} />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
