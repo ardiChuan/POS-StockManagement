@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { getDeviceFromCookies } from "@/lib/auth";
+import { getYesterdayOpeningBalance } from "@/lib/cash-register";
 
 export async function GET() {
   const device = await getDeviceFromCookies();
@@ -8,12 +9,22 @@ export async function GET() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  // Get or compute today's register
-  const { data: register } = await supabase
+  // Get or create today's register
+  let { data: register } = await supabase
     .from("cash_register")
     .select("*")
     .eq("date", today)
     .single();
+
+  if (!register) {
+    const openingBalance = await getYesterdayOpeningBalance();
+    const { data: created } = await supabase
+      .from("cash_register")
+      .insert({ date: today, opening_balance: openingBalance })
+      .select()
+      .single();
+    register = created;
+  }
 
   // Calculate live expected cash
   const todayStart = `${today}T00:00:00.000Z`;
