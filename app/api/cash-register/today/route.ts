@@ -7,16 +7,17 @@ export async function GET() {
   const device = await getDeviceFromCookies();
   if (!device) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const today = new Date().toISOString().split("T")[0];
-
-  // Get or create today's register
+  // Find the latest unclosed register (handles cross-UTC-midnight submissions)
   let { data: register } = await supabase
     .from("cash_register")
     .select("*")
-    .eq("date", today)
+    .is("closed_at", null)
+    .order("date", { ascending: false })
+    .limit(1)
     .single();
 
   if (!register) {
+    const today = new Date().toISOString().split("T")[0];
     const openingBalance = await getYesterdayOpeningBalance();
     const { data: created } = await supabase
       .from("cash_register")
@@ -26,22 +27,22 @@ export async function GET() {
     register = created;
   }
 
-  // Calculate live expected cash
-  const todayStart = `${today}T00:00:00.000Z`;
-  const todayEnd = `${today}T23:59:59.999Z`;
+  const dateStr = register!.date as string;
+  const dateStart = `${dateStr}T00:00:00.000Z`;
+  const dateEnd = `${dateStr}T23:59:59.999Z`;
 
   const [{ data: salesData }, { data: expensesData }] = await Promise.all([
     supabase
       .from("sales")
       .select("total, payment_method")
       .eq("payment_method", "cash")
-      .gte("created_at", todayStart)
-      .lte("created_at", todayEnd),
+      .gte("created_at", dateStart)
+      .lte("created_at", dateEnd),
     supabase
       .from("expenses")
       .select("amount")
-      .gte("created_at", todayStart)
-      .lte("created_at", todayEnd),
+      .gte("created_at", dateStart)
+      .lte("created_at", dateEnd),
   ]);
 
   const cashSalesTotal = (salesData as { total: number }[] | null)?.reduce((s, r) => s + Number(r.total), 0) ?? 0;
@@ -50,7 +51,7 @@ export async function GET() {
   const expectedCash = openingBalance + cashSalesTotal - expensesTotal;
 
   return NextResponse.json({
-    date: today,
+    date: dateStr,
     opening_balance: openingBalance,
     cash_sales_total: cashSalesTotal,
     expenses_total: expensesTotal,

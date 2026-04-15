@@ -37,3 +37,31 @@ export async function getYesterdayOpeningBalance(): Promise<number> {
 
   return Number(prev.opening_balance ?? 0) + cashSales - expenses;
 }
+
+/**
+ * Ensures a cash register row exists for the current business day.
+ * If the latest register is already closed, reopens it so EOD must be resubmitted.
+ * Uses the latest unclosed register to avoid UTC-date boundary issues.
+ */
+export async function ensureOpenCashRegister(): Promise<void> {
+  const { data: latest } = await supabase
+    .from("cash_register")
+    .select("id, closed_at")
+    .order("date", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!latest) {
+    const today = new Date().toISOString().split("T")[0];
+    const openingBalance = await getYesterdayOpeningBalance();
+    await supabase.from("cash_register").insert({ date: today, opening_balance: openingBalance });
+    return;
+  }
+
+  if (latest.closed_at) {
+    await supabase
+      .from("cash_register")
+      .update({ closed_at: null, actual_cash: null, expected_cash: null, discrepancy: null, closed_by_device_id: null, notes: null })
+      .eq("id", latest.id);
+  }
+}

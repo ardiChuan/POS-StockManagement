@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { getDeviceFromCookies } from "@/lib/auth";
 import type { CreateSaleRequest, DiscountType, PaymentMethod } from "@/types";
-import { getYesterdayOpeningBalance } from "@/lib/cash-register";
+import { ensureOpenCashRegister } from "@/lib/cash-register";
 
 // GET /api/sales
 export async function GET(req: NextRequest) {
@@ -246,8 +246,8 @@ async function processSaleItems(sale: { id: string; payment_method: string }, it
       });
     }
 
-    // ── 10. Ensure today's cash_register row exists ────────────────────────
-    await ensureTodayCashRegister();
+    // ── 10. Ensure cash register is open (reopens if EOD was already submitted) ──
+    await ensureOpenCashRegister();
 
     return NextResponse.json({ id: sale.id }, { status: 201 });
   } catch (err) {
@@ -261,19 +261,3 @@ async function processSaleItems(sale: { id: string; payment_method: string }, it
   }
 }
 
-async function ensureTodayCashRegister() {
-  const today = new Date().toISOString().split("T")[0];
-  const { data: existing } = await supabase
-    .from("cash_register")
-    .select("id")
-    .eq("date", today)
-    .single();
-
-  if (!existing) {
-    const openingBalance = await getYesterdayOpeningBalance();
-    await supabase.from("cash_register").insert({
-      date: today,
-      opening_balance: openingBalance,
-    });
-  }
-}

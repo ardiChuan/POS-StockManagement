@@ -10,18 +10,17 @@ export async function POST(req: NextRequest) {
   const { actual_cash, notes } = await req.json();
   if (actual_cash == null) return NextResponse.json({ error: "actual_cash required" }, { status: 400 });
 
-  const today = new Date().toISOString().split("T")[0];
-  const todayStart = `${today}T00:00:00.000Z`;
-  const todayEnd = `${today}T23:59:59.999Z`;
-
-  // Get or create today's register
+  // Find the latest unclosed register (handles cross-UTC-midnight submissions)
   let { data: register } = await supabase
     .from("cash_register")
     .select("*")
-    .eq("date", today)
+    .is("closed_at", null)
+    .order("date", { ascending: false })
+    .limit(1)
     .single();
 
   if (!register) {
+    const today = new Date().toISOString().split("T")[0];
     const openingBalance = await getYesterdayOpeningBalance();
     const { data: created } = await supabase
       .from("cash_register")
@@ -31,10 +30,13 @@ export async function POST(req: NextRequest) {
     register = created;
   }
 
-  // Calculate expected
+  const dateStr = register!.date as string;
+  const dateStart = `${dateStr}T00:00:00.000Z`;
+  const dateEnd = `${dateStr}T23:59:59.999Z`;
+
   const [{ data: salesData }, { data: expensesData }] = await Promise.all([
-    supabase.from("sales").select("total").eq("payment_method", "cash").gte("created_at", todayStart).lte("created_at", todayEnd),
-    supabase.from("expenses").select("amount").gte("created_at", todayStart).lte("created_at", todayEnd),
+    supabase.from("sales").select("total").eq("payment_method", "cash").gte("created_at", dateStart).lte("created_at", dateEnd),
+    supabase.from("expenses").select("amount").gte("created_at", dateStart).lte("created_at", dateEnd),
   ]);
 
   const cashSales = (salesData as { total: number }[] | null)?.reduce((s, r) => s + Number(r.total), 0) ?? 0;
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
       closed_by_device_id: device.id,
       closed_at: new Date().toISOString(),
     })
-    .eq("date", today)
+    .eq("date", dateStr)
     .select()
     .single();
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { getDeviceFromCookies } from "@/lib/auth";
+import { ensureOpenCashRegister } from "@/lib/cash-register";
 
 export async function GET(req: NextRequest) {
   const device = await getDeviceFromCookies();
@@ -42,19 +43,7 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Ensure today's cash_register row exists (expenses affect expected_cash)
-  const today = new Date().toISOString().split("T")[0];
-  const { data: existing } = await supabase.from("cash_register").select("id").eq("date", today).single();
-  if (!existing) {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const { data: prev } = await supabase
-      .from("cash_register")
-      .select("actual_cash")
-      .eq("date", yesterday.toISOString().split("T")[0])
-      .single();
-    await supabase.from("cash_register").insert({ date: today, opening_balance: prev?.actual_cash ?? 0 });
-  }
+  await ensureOpenCashRegister();
 
   return NextResponse.json(data, { status: 201 });
 }
