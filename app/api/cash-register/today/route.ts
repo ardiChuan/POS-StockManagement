@@ -4,26 +4,35 @@ import { getDeviceFromCookies } from "@/lib/auth";
 import { getYesterdayOpeningBalance } from "@/lib/cash-register";
 
 export async function GET() {
+  try {
   const device = await getDeviceFromCookies();
   if (!device) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Find the latest unclosed register (handles cross-UTC-midnight submissions)
-  let { data: register } = await supabase
+  // Find the latest register (open or closed)
+  let { data: register, error: fetchError } = await supabase
     .from("cash_register")
     .select("*")
-    .is("closed_at", null)
     .order("date", { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error("cash-register fetch error:", fetchError);
+    return NextResponse.json({ error: fetchError.message }, { status: 500 });
+  }
 
   if (!register) {
     const today = new Date().toISOString().split("T")[0];
     const openingBalance = await getYesterdayOpeningBalance();
-    const { data: created } = await supabase
+    const { data: created, error: insertError } = await supabase
       .from("cash_register")
       .insert({ date: today, opening_balance: openingBalance })
       .select()
       .single();
+    if (insertError) {
+      console.error("cash-register insert error:", insertError);
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
     register = created;
   }
 
@@ -61,4 +70,8 @@ export async function GET() {
     closed_at: register?.closed_at ?? null,
     is_closed: !!register?.closed_at,
   });
+  } catch (err) {
+    console.error("cash-register/today unexpected error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
