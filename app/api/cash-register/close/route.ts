@@ -10,17 +10,16 @@ export async function POST(req: NextRequest) {
   const { actual_cash, notes } = await req.json();
   if (actual_cash == null) return NextResponse.json({ error: "actual_cash required" }, { status: 400 });
 
-  // Find the latest unclosed register (handles cross-UTC-midnight submissions)
+  const today = new Date().toISOString().split("T")[0];
+
+  // Find today's register (open or closed)
   let { data: register } = await supabase
     .from("cash_register")
     .select("*")
-    .is("closed_at", null)
-    .order("date", { ascending: false })
-    .limit(1)
-    .single();
+    .eq("date", today)
+    .maybeSingle();
 
   if (!register) {
-    const today = new Date().toISOString().split("T")[0];
     const openingBalance = await getYesterdayOpeningBalance();
     const { data: created } = await supabase
       .from("cash_register")

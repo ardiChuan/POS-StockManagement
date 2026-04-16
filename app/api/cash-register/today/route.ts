@@ -8,12 +8,13 @@ export async function GET() {
   const device = await getDeviceFromCookies();
   if (!device) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Find the latest register (open or closed)
+  const today = new Date().toISOString().split("T")[0];
+
+  // Try to find today's register first (open or closed)
   let { data: register, error: fetchError } = await supabase
     .from("cash_register")
     .select("*")
-    .order("date", { ascending: false })
-    .limit(1)
+    .eq("date", today)
     .maybeSingle();
 
   if (fetchError) {
@@ -21,8 +22,8 @@ export async function GET() {
     return NextResponse.json({ error: fetchError.message }, { status: 500 });
   }
 
+  // No register for today — create one
   if (!register) {
-    const today = new Date().toISOString().split("T")[0];
     const openingBalance = await getYesterdayOpeningBalance();
     const { data: created, error: insertError } = await supabase
       .from("cash_register")
